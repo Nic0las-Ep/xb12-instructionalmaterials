@@ -1,0 +1,11 @@
+professor_name,class_name,course_number,crn_code,section,textbook_title,textbook_cost,textbook_url,platform_name,platform_cost,platform_url
+Dr. Sarah Chen,Introduction to Biology,BIOL 10,12783,01Y,Campbell Biology: Concepts & Connections (9th Ed),145,https://www.pearson.com/en-us/subject-catalog/p/campbell-biology-concepts-connections/P200000006804,Mastering Biology,120,https://www.pearson.com/en-us/higher-education/products-services/mastering/biology.html
+Dr. Michael Rodriguez,Introduction to Biology,BIOL 10,12784,02Y,Biology by OpenStax,0,https://openstax.org/details/books/biology-2e,Top Hat,65,https://tophat.com
+Dr. Emily Nakamura,Calculus I,MATH 1A,15234,01,Stewart Calculus: Early Transcendentals (9th Ed),280,https://www.cengage.com/c/calculus-early-transcendentals-9e-stewart/,WebAssign,95,https://www.webassign.com
+Prof. James Liu,Calculus I,MATH 1A,15235,03,OpenStax Calculus Volume 1,0,https://openstax.org/details/books/calculus-volume-1,MyOpenMath,0,https://www.myopenmath.com
+Dr. Amanda Foster,Introduction to Programming,CS 1A,18901,01,Starting Out with Python (5th Ed),135,https://www.pearson.com/en-us/subject-catalog/p/starting-out-with-python/P200000003379,Zybooks Python,77,https://www.zybooks.com/catalog/python/
+Prof. David Park,Introduction to Programming,CS 1A,18902,02,Python Crash Course (3rd Ed),40,https://nostarch.com/python-crash-course-3rd-edition,Replit Teams,5,https://replit.com/site/teams-for-education
+Dr. Jennifer Williams,English Composition,ENGL 1A,20456,01,The Norton Field Guide to Writing (5th Ed),85,https://wwnorton.com/books/9780393877267,Canvas (Built-in),0,https://www.instructure.com/canvas
+Prof. Robert Martinez,English Composition,ENGL 1A,20457,03,They Say I Say with Readings (5th Ed),65,https://wwnorton.com/books/9780393538687,Turnitin,12,https://www.turnitin.com
+Dr. Lisa Wang,General Chemistry,CHEM 1A,22678,01,Chemistry: The Central Science (15th Ed),320,https://www.pearson.com/en-us/subject-catalog/p/chemistry-the-central-science/P200000006199,Mastering Chemistry,120,https://www.pearson.com/en-us/higher-education/products-services/mastering/chemistry.html
+Prof. Kevin Thompson,General Chemistry,CHEM 1A,22679,02,OpenStax Chemistry 2e,0,https://openstax.org/details/books/chemistry-2e,ALEKS Chemistry,110,https://www.aleks.com/about_aleks/chemistry
