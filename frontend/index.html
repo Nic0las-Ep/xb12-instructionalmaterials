@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instructional Materials Registry — XB12</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="site-header" role="banner">
+  <div class="header-left">
+    <span class="header-logo">FHDA</span>
+    <div class="header-titles">
+      <h1>Instructional Materials Registry</h1>
+      <p>Register course textbooks &amp; learning platforms — automatic XB12 classification</p>
+    </div>
+  </div>
+  <span class="header-badge">XB12</span>
+</header>
+<div class="accent-bar"></div>
+
+<main class="page">
+
+  <!-- Hero -->
+  <div class="hero" style="border-radius: var(--radius); margin-bottom: 1.6rem;">
+    <h1>Register materials for your course</h1>
+    <p>Select the class you're teaching, then add one or more textbooks or learning
+      platforms. Reuse a resource that's already in the catalog, or add a new one —
+      we'll pull details from public book registries and derive the
+      <strong>XB12 instructional-material cost code</strong> for you.</p>
+  </div>
+
+  <!-- Global alert -->
+  <div id="global-alert" class="alert alert-error hidden" role="alert"></div>
+
+  <!-- ══ STEP 1: Course & Instructor ══ -->
+  <section class="step-card" id="step-course">
+    <h2><span class="step-num">1</span> Course &amp; Instructor</h2>
+    <p class="step-desc">Identify the section you are registering materials for.</p>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="course-prefix">Department / Course prefix *</label>
+        <input type="text" id="course-prefix" placeholder="e.g. BIOL" />
+      </div>
+      <div class="form-group">
+        <label for="course-number">Course number *</label>
+        <input type="text" id="course-number" placeholder="e.g. 10" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="quarter">Quarter</label>
+        <select id="quarter">
+          <option value="">Select…</option>
+          <option>Fall</option>
+          <option>Winter</option>
+          <option>Spring</option>
+          <option>Summer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="year">Year</label>
+        <input type="number" id="year" placeholder="e.g. 2026" min="2020" max="2100" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="prof-first">Instructor first name</label>
+        <input type="text" id="prof-first" placeholder="First name" />
+      </div>
+      <div class="form-group">
+        <label for="prof-last">Instructor last name</label>
+        <input type="text" id="prof-last" placeholder="Last name" />
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn-load-course">Load course</button>
+  </section>
+
+  <!-- ══ Adopted resources ══ -->
+  <section class="step-card locked" id="step-adopted">
+    <h2><span class="step-num">✓</span> Materials for this course</h2>
+    <p class="step-desc" id="adopted-course-label">No course loaded yet.</p>
+    <div id="adopted-list" class="adopted-list"></div>
+    <p class="empty-hint hidden" id="adopted-empty">
+      No materials registered for this course yet. Add one below.
+    </p>
+  </section>
+
+  <!-- ══ STEP 2: Add a resource ══ -->
+  <section class="step-card locked" id="step-add">
+    <h2><span class="step-num">2</span> Add a resource</h2>
+    <p class="step-desc">Use a resource already in the catalog, or register a new one.
+      You can add as many as your course uses.</p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="existing" role="tab">Use existing</button>
+      <button class="tab" data-tab="new" role="tab">Add new</button>
+    </div>
+
+    <!-- ── Existing ── -->
+    <div class="tab-panel active" id="panel-existing">
+      <div class="filters" style="padding:0; border:none;">
+        <div class="filter-group" style="flex: 2 1 220px;">
+          <label for="search-q">Search title / author</label>
+          <input type="text" id="search-q" placeholder="e.g. Campbell Biology" />
+        </div>
+        <div class="filter-group">
+          <label for="filter-xb12">XB12 status</label>
+          <select id="filter-xb12">
+            <option value="">Any</option>
+            <option value="E">E — OER (ZTC)</option>
+            <option value="F">F — No-cost digital, non-OER</option>
+            <option value="G">G — Mixed, no cost to student</option>
+            <option value="C">C — Cost, none passed to student</option>
+            <option value="D">D — Low cost (LTC)</option>
+            <option value="Y">Y — Standard cost</option>
+            <option value="A">A — No material</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-type">Type</label>
+          <select id="filter-type">
+            <option value="">Any</option>
+            <option value="textbook">Textbook</option>
+            <option value="platform">Learning platform</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-subject">Subject</label>
+          <input type="text" id="filter-subject" placeholder="e.g. Biology" />
+        </div>
+        <div class="filter-group" style="flex:0 0 auto; justify-content:flex-end;">
+          <label>&nbsp;</label>
+          <button class="btn-primary" id="btn-search">Search</button>
+        </div>
+      </div>
+      <div id="search-status" class="empty-hint">Enter a search above to find existing resources.</div>
+      <div id="search-results" class="resource-list"></div>
+    </div>
+
+    <!-- ── New ── -->
+    <div class="tab-panel" id="panel-new">
+      <div class="options" style="margin-left:0; flex-direction:row; gap:1.5rem; margin-bottom:1.2rem;">
+        <label class="option-item"><input type="radio" name="new-type" value="textbook" checked /> Textbook (has ISBN)</label>
+        <label class="option-item"><input type="radio" name="new-type" value="platform" /> Learning platform (URL)</label>
+      </div>
+
+      <!-- Textbook: ISBN lookup -->
+      <div id="new-textbook">
+        <div class="form-group">
+          <label for="isbn-input">ISBN *</label>
+          <div style="display:flex; gap:0.6rem;">
+            <input type="text" id="isbn-input" placeholder="e.g. 9781319491512" />
+            <button class="btn-primary" id="btn-isbn-lookup" style="flex:0 0 auto;">Look up</button>
+          </div>
+          <p class="small-note">We'll search Google Books &amp; Open Library and pre-fill what we find.</p>
+        </div>
+        <div id="isbn-status" class="alert alert-info hidden"></div>
+      </div>
+
+      <!-- Platform: URL -->
+      <div id="new-platform" class="hidden">
+        <div class="form-group">
+          <label for="platform-url">Platform URL *</label>
+          <input type="url" id="platform-url" placeholder="https://…" />
+          <p class="small-note">Learning platforms have no ISBN — we register them by URL.</p>
+        </div>
+      </div>
+
+      <!-- Shared resource fields -->
+      <hr class="divider" />
+      <div class="form-row">
+        <div class="form-group" id="fg-title">
+          <label for="res-title">Title *</label>
+          <input type="text" id="res-title" placeholder="Resource title" />
+        </div>
+        <div class="form-group" id="fg-author">
+          <label for="res-author">Author</label>
+          <input type="text" id="res-author" placeholder="Author(s)" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" id="fg-publisher">
+          <label for="res-publisher">Publisher</label>
+          <input type="text" id="res-publisher" placeholder="Publisher" />
+        </div>
+        <div class="form-group">
+          <label for="res-subject">Subject</label>
+          <input type="text" id="res-subject" placeholder="e.g. Biology" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="res-cost-type">Cost to student *</label>
+          <select id="res-cost-type">
+            <option value="oer">Open Educational Resource (OER) — free</option>
+            <option value="free_non_oer">Free digital, not OER</option>
+            <option value="subsidized">College-subsidized (student pays $0)</option>
+            <option value="priced">Student pays a price</option>
+          </select>
+        </div>
+        <div class="form-group" id="fg-price">
+          <label for="res-price">Price (USD) <span class="field-flag" id="price-flag"></span></label>
+          <input type="number" id="res-price" placeholder="e.g. 79.99" min="0" step="0.01" />
+        </div>
+      </div>
+
+      <div id="new-status" class="alert alert-info hidden"></div>
+      <div id="xb12-preview" class="xb12-result hidden"></div>
+
+      <div class="submit-row">
+        <button class="btn-submit" id="btn-save-new">Save &amp; add to course</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="form-footer" role="contentinfo">
+  Foothill–De Anza Community College District &nbsp;|&nbsp; XB12 Instructional-Materials Registry
+</footer>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

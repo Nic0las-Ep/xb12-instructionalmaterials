@@ -1,0 +1,439 @@
+/**
+ * app.js — UI logic for the XB12 Instructional-Materials Registry.
+ * Depends on API (api.js) for all backend calls.
+ */
+(function () {
+  'use strict';
+
+  // ---- Small DOM helpers --------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) =>
+    String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+    );
+
+  let currentCourse = null;
+
+  // ---- XB12 presentation --------------------------------------------------
+  const XB12_MEANING = {
+    A: 'No associated course material',
+    C: 'Course material costs, none passed to students',
+    D: 'Low course material cost (LTC)',
+    E: 'Only no-cost OER material (ZTC)',
+    F: 'Only no-cost digital, non-OER material',
+    G: 'Mix of OER and other resources, no cost to student',
+    Y: 'Does not meet no-cost or low-cost criteria',
+  };
+
+  function xb12BadgeClass(code) {
+    if (['E', 'F', 'G', 'C'].includes(code)) return 'xb12-ztc';
+    if (code === 'D') return 'xb12-ltc';
+    if (code === 'Y') return 'xb12-y';
+    return 'xb12-none';
+  }
+
+  function xb12Badge(code) {
+    if (!code) return '';
+    const cls = xb12BadgeClass(code);
+    const meaning = XB12_MEANING[code] || '';
+    return `<span class="xb12-badge ${cls}" title="${esc(meaning)}"><span class="code">${esc(
+      code
+    )}</span> XB12</span>`;
+  }
+
+  // ---- Alerts -------------------------------------------------------------
+  function showGlobalError(msg) {
+    const el = $('global-alert');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function clearGlobalError() {
+    $('global-alert').classList.add('hidden');
+  }
+  function setStatus(id, kind, html) {
+    const el = $(id);
+    el.className = `alert alert-${kind}`;
+    el.innerHTML = html;
+    el.classList.remove('hidden');
+  }
+  function hide(id) {
+    $(id).classList.add('hidden');
+  }
+
+  // ---- Step locking -------------------------------------------------------
+  function unlockCourseSteps() {
+    $('step-adopted').classList.remove('locked');
+    $('step-add').classList.remove('locked');
+  }
+
+  // =========================================================================
+  // Step 1 — load course
+  // =========================================================================
+  async function loadCourse() {
+    clearGlobalError();
+    const prefix = $('course-prefix').value.trim().toUpperCase();
+    const number = $('course-number').value.trim();
+    if (!prefix || !number) {
+      showGlobalError('Please enter both a course prefix and course number.');
+      return;
+    }
+    currentCourse = {
+      coursePrefix: prefix,
+      courseNumber: number,
+      quarter: $('quarter').value.trim(),
+      year: $('year').value.trim(),
+      professorFirstName: $('prof-first').value.trim(),
+      professorLastName: $('prof-last').value.trim(),
+    };
+
+    const term = [currentCourse.quarter, currentCourse.year].filter(Boolean).join(' ');
+    $('adopted-course-label').textContent =
+      `${prefix} ${number}${term ? ' · ' + term : ''}`;
+
+    unlockCourseSteps();
+    await refreshAdopted();
+    $('step-adopted').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function refreshAdopted() {
+    if (!currentCourse) return;
+    const listEl = $('adopted-list');
+    listEl.innerHTML = '<p class="empty-hint"><span class="spinner dark"></span> Loading…</p>';
+    try {
+      const res = await API.listCourseResources({
+        coursePrefix: currentCourse.coursePrefix,
+        courseNumber: currentCourse.courseNumber,
+        quarter: currentCourse.quarter,
+        year: currentCourse.year,
+      });
+      renderAdopted(res.adoptions || []);
+    } catch (e) {
+      listEl.innerHTML = '';
+      showGlobalError('Could not load current materials: ' + e.message);
+    }
+  }
+
+  function renderAdopted(items) {
+    const listEl = $('adopted-list');
+    const emptyEl = $('adopted-empty');
+    listEl.innerHTML = '';
+    if (!items.length) {
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+    emptyEl.classList.add('hidden');
+    items
+      .sort((a, b) => (b.adoptedAt || '').localeCompare(a.adoptedAt || ''))
+      .forEach((it) => {
+        const ref = it.ISBN ? `ISBN ${esc(it.ISBN)}` : it.url ? esc(it.url) : '';
+        const div = document.createElement('div');
+        div.className = 'adopted-item';
+        div.innerHTML = `
+          <div class="rc-main">
+            <div class="ai-title">${esc(it.title || it.resourceId || 'Untitled resource')}</div>
+            <div class="ai-meta">${esc(it.materialType || 'resource')}${ref ? ' · ' + ref : ''}</div>
+          </div>
+          <div>${xb12Badge(it.xb12Code)}</div>`;
+        listEl.appendChild(div);
+      });
+  }
+
+  // =========================================================================
+  // Step 2a — search existing
+  // =========================================================================
+  async function runSearch() {
+    const statusEl = $('search-status');
+    const resultsEl = $('search-results');
+    resultsEl.innerHTML = '';
+    statusEl.textContent = '';
+    statusEl.innerHTML = '<span class="spinner dark"></span> Searching…';
+
+    try {
+      const res = await API.searchResources({
+        q: $('search-q').value.trim(),
+        xb12: $('filter-xb12').value,
+        materialType: $('filter-type').value,
+        subject: $('filter-subject').value.trim(),
+        size: 30,
+      });
+      const resources = res.resources || [];
+      if (!resources.length) {
+        statusEl.textContent = 'No matching resources found. Try the "Add new" tab.';
+        return;
+      }
+      statusEl.textContent = `${res.count} result${res.count === 1 ? '' : 's'}`;
+      resources.forEach((r) => resultsEl.appendChild(resourceCard(r)));
+    } catch (e) {
+      statusEl.textContent = '';
+      showGlobalError('Search failed: ' + e.message);
+    }
+  }
+
+  function resourceCard(r) {
+    const meta = [];
+    if (r.author) meta.push(esc(r.author));
+    if (r.publisher) meta.push(esc(r.publisher));
+    if (r.ISBN) meta.push('ISBN ' + esc(r.ISBN));
+    if (r.url) meta.push(esc(r.url));
+    if (r.materialType) meta.push(esc(r.materialType));
+
+    const card = document.createElement('div');
+    card.className = 'resource-card';
+    card.innerHTML = `
+      <div class="rc-main">
+        <div class="rc-title">${esc(r.title || 'Untitled')}</div>
+        <div class="rc-meta">${meta.join(' · ')}</div>
+      </div>
+      <div class="rc-actions">
+        ${xb12Badge(r.xb12Code)}
+        <button class="btn-view">Add to course</button>
+      </div>`;
+    card.querySelector('button').addEventListener('click', () => adoptExisting(r, card));
+    return card;
+  }
+
+  async function adoptExisting(r, card) {
+    if (!currentCourse) {
+      showGlobalError('Load a course first.');
+      return;
+    }
+    const btn = card.querySelector('button');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      await API.addCourseResource({
+        ...currentCourse,
+        resourceId: r.id,
+        ISBN: r.ISBN,
+        url: r.url,
+        title: r.title,
+        xb12Code: r.xb12Code,
+        materialType: r.materialType,
+      });
+      btn.textContent = 'Added ✓';
+      await refreshAdopted();
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Add to course';
+      showGlobalError('Could not add resource: ' + e.message);
+    }
+  }
+
+  // =========================================================================
+  // Step 2b — add new
+  // =========================================================================
+  function currentNewType() {
+    const el = document.querySelector('input[name="new-type"]:checked');
+    return el ? el.value : 'textbook';
+  }
+
+  function onNewTypeChange() {
+    const type = currentNewType();
+    $('new-textbook').classList.toggle('hidden', type !== 'textbook');
+    $('new-platform').classList.toggle('hidden', type !== 'platform');
+    hide('xb12-preview');
+  }
+
+  function onCostTypeChange() {
+    const type = $('res-cost-type').value;
+    const priced = type === 'priced' || type === 'subsidized';
+    $('fg-price').style.opacity = priced ? '1' : '0.5';
+    $('price-flag').textContent = type === 'priced' ? 'required' : '';
+  }
+
+  function markMissing(groupId, missing) {
+    $(groupId).classList.toggle('field-missing', missing);
+  }
+
+  async function runIsbnLookup() {
+    const isbn = $('isbn-input').value.trim();
+    if (!isbn) {
+      setStatus('isbn-status', 'warn', 'Please enter an ISBN.');
+      return;
+    }
+    const btn = $('btn-isbn-lookup');
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      const res = await API.isbnLookup(isbn);
+      const m = res.metadata || {};
+      $('res-title').value = m.title || '';
+      $('res-author').value = m.author || '';
+      $('res-publisher').value = m.publisher || '';
+      if (m.categories && m.categories.length) $('res-subject').value = m.categories[0];
+      if (m.price != null) {
+        $('res-price').value = m.price;
+        $('res-cost-type').value = 'priced';
+        onCostTypeChange();
+      }
+
+      const missing = res.missingFields || [];
+      markMissing('fg-title', missing.includes('title'));
+      markMissing('fg-author', missing.includes('author'));
+      markMissing('fg-publisher', missing.includes('publisher'));
+
+      if (!res.found) {
+        setStatus(
+          'isbn-status',
+          'warn',
+          'No registry match for that ISBN. Please fill in the details manually.'
+        );
+      } else if (missing.length) {
+        setStatus(
+          'isbn-status',
+          'warn',
+          `Found via ${esc((res.sources || []).join(', '))}. Please complete the highlighted field(s): <strong>${esc(
+            missing.join(', ')
+          )}</strong>.`
+        );
+      } else {
+        setStatus(
+          'isbn-status',
+          'success',
+          `Details found via ${esc((res.sources || []).join(', '))}. Review and save below.`
+        );
+      }
+    } catch (e) {
+      setStatus('isbn-status', 'error', 'Lookup failed: ' + esc(e.message));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+
+  async function saveNew() {
+    if (!currentCourse) {
+      showGlobalError('Load a course first.');
+      return;
+    }
+    hide('xb12-preview');
+    const type = currentNewType();
+    const title = $('res-title').value.trim();
+    const costType = $('res-cost-type').value;
+    const priceRaw = $('res-price').value.trim();
+
+    // Validation
+    if (!title) {
+      setStatus('new-status', 'warn', 'A title is required.');
+      markMissing('fg-title', true);
+      return;
+    }
+    const payload = {
+      title,
+      materialType: type,
+      author: $('res-author').value.trim(),
+      publisher: $('res-publisher').value.trim(),
+      subject: $('res-subject').value.trim(),
+      costType,
+    };
+    if (type === 'textbook') {
+      const isbn = $('isbn-input').value.trim();
+      if (!isbn) {
+        setStatus('new-status', 'warn', 'Textbooks require an ISBN.');
+        return;
+      }
+      payload.ISBN = isbn;
+    } else {
+      const url = $('platform-url').value.trim();
+      if (!url) {
+        setStatus('new-status', 'warn', 'Learning platforms require a URL.');
+        return;
+      }
+      payload.url = url;
+    }
+    if (costType === 'priced' && !priceRaw) {
+      setStatus('new-status', 'warn', 'Please enter the price the student pays.');
+      return;
+    }
+    if (priceRaw) payload.price = priceRaw;
+
+    const btn = $('btn-save-new');
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+    try {
+      const created = await API.createResource(payload);
+      const xb = created.xb12 || {};
+      // Adopt into the current course.
+      await API.addCourseResource({
+        ...currentCourse,
+        resourceId: created.resource.id,
+        ISBN: created.resource.ISBN,
+        url: created.resource.url,
+        title: created.resource.title,
+        xb12Code: xb.code,
+        materialType: created.resource.materialType,
+      });
+
+      const previewEl = $('xb12-preview');
+      previewEl.innerHTML = `
+        <h3>XB12 classification</h3>
+        <div>${xb12Badge(xb.code)} <strong>${esc(xb.code || '')}</strong> — ${esc(
+        xb.meaning || ''
+      )}${xb.ztcLtc ? ` <span class="chip chip-ztc">${esc(xb.ztcLtc)}</span>` : ''}</div>
+        <p class="explain">${esc(xb.explanation || '')}</p>`;
+      previewEl.classList.remove('hidden');
+
+      setStatus('new-status', 'success', `"${esc(title)}" saved and added to your course.`);
+      resetNewForm();
+      await refreshAdopted();
+    } catch (e) {
+      showGlobalError('Could not save resource: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  }
+
+  function resetNewForm() {
+    ['isbn-input', 'platform-url', 'res-title', 'res-author', 'res-publisher', 'res-subject', 'res-price'].forEach(
+      (id) => {
+        if ($(id)) $(id).value = '';
+      }
+    );
+    ['fg-title', 'fg-author', 'fg-publisher'].forEach((g) => markMissing(g, false));
+    hide('isbn-status');
+  }
+
+  // ---- Tabs ---------------------------------------------------------------
+  function initTabs() {
+    document.querySelectorAll('.tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+        tab.classList.add('active');
+        $('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+  }
+
+  // ---- Wire up ------------------------------------------------------------
+  async function init() {
+    await API.initConfig();
+    initTabs();
+    onNewTypeChange();
+    onCostTypeChange();
+
+    $('btn-load-course').addEventListener('click', loadCourse);
+    $('btn-search').addEventListener('click', runSearch);
+    $('search-q').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') runSearch();
+    });
+    $('btn-isbn-lookup').addEventListener('click', runIsbnLookup);
+    $('isbn-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runIsbnLookup();
+      }
+    });
+    $('btn-save-new').addEventListener('click', saveNew);
+    $('res-cost-type').addEventListener('change', onCostTypeChange);
+    document.querySelectorAll('input[name="new-type"]').forEach((r) =>
+      r.addEventListener('change', onNewTypeChange)
+    );
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
