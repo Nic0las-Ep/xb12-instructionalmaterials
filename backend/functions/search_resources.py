@@ -17,6 +17,7 @@ title matches, and a lexical-only fallback is used if embeddings are
 unavailable.
 """
 
+import json
 import os
 
 from xb12_common import embeddings
@@ -30,8 +31,10 @@ AOSS_INDEX = os.environ.get("AOSS_INDEX", "resources")
 # unrelated "noise floor" sits <= ~0.365, so 0.37 cleanly separates them.
 SIMILARITY_MIN_SCORE = float(os.environ.get("SIMILARITY_MIN_SCORE", "0.37"))
 
-# Lexical fields (used only as a fallback when embeddings are unavailable).
-_TEXT_FIELDS = ["title^3", "author^2", "publisher", "description"]
+# Lexical fields for the primary title/author search. Kept narrow (title,
+# author) so results stay specific to what the user typed rather than matching
+# on descriptions or topical text.
+_TEXT_FIELDS = ["title^3", "author^2"]
 
 
 def _terms_filter(field, raw):
@@ -75,42 +78,63 @@ def handler(event, context):
             if clause:
                 filters.append(clause)
 
-    # ---- Query -----------------------------------------------------------
-    # Default: browse (no free-text query) -> match everything, filters apply.
-    bool_query = {"must": [{"match_all": {}}]}
-    min_score = None
-
-    if q:
-        vector = embeddings.embed_text(q)
-        if vector:
-            # Primary path: pure semantic k-NN, gated by a similarity cutoff so
-            # only genuinely relevant resources are returned (not every doc).
-            # Filters carry no score, so the top-level min_score applies to the
-            # k-NN similarity score directly.
-            bool_query = {
-                "must": [
-                    {"knn": {"embedding": {"vector": vector, "k": max(size, 50)}}}
-                ]
-            }
-            min_score = SIMILARITY_MIN_SCORE
-        else:
-            # Fallback (embeddings unavailable): lexical prefix + fuzzy match.
-            bool_query = {
-                "should": [
-                    {"multi_match": {"query": q, "fields": _TEXT_FIELDS, "type": "phrase_prefix"}},
-                    {"multi_match": {"query": q, "fields": _TEXT_FIELDS, "fuzziness": "AUTO", "prefix_length": 1}},
-                ],
-                "minimum_should_match": 1,
-            }
-
-    if filters:
-        bool_query["filter"] = filters
-
-    body = {"size": size, "query": {"bool": bool_query}}
-    if min_score is not None:
-        body["min_score"] = min_score
-
     client = AossClient()
+
+    # ---- Query -----------------------------------------------------------
+    # No free-text query -> browse everything (filters still apply).
+    if not q:
+        body = {"size": size, "query": {"bool": _with_filters({"must": [{"match_all": {}}]}, filters)}}
+        return _run(client, body)
+
+    # Primary path: LEXICAL match on title/author. Prefix matching handles
+    # partial words ("Bio" -> "Biology") and fuzzy matching handles typos, while
+    # keeping results specific to what the user typed - so topically-adjacent
+    # titles that don't contain the term (e.g. "Anatomy & Physiology" for "Bio")
+    # are NOT returned.
+    lexical = {
+        "should": [
+            {"multi_match": {"query": q, "fields": _TEXT_FIELDS, "type": "phrase_prefix"}},
+            {"multi_match": {"query": q, "fields": _TEXT_FIELDS, "fuzziness": "AUTO", "prefix_length": 1}},
+        ],
+        "minimum_should_match": 1,
+    }
+    body = {"size": size, "query": {"bool": _with_filters(lexical, filters)}}
+    response = _run(client, body)
+    lexical_hits = _extract(response)
+    if lexical_hits is None:  # error already packaged as an HTTP response
+        return response
+    if lexical_hits:
+        return ok({"count": len(lexical_hits), "resources": lexical_hits})
+
+    # Fallback: no lexical match at all -> semantic k-NN similarity, gated by a
+    # relevance cutoff, so unusual/synonym queries still return something useful.
+    vector = embeddings.embed_text(q)
+    if not vector:
+        return ok({"count": 0, "resources": []})
+    knn = {"must": [{"knn": {"embedding": {"vector": vector, "k": max(size, 50)}}}]}
+    body = {
+        "size": size,
+        "min_score": SIMILARITY_MIN_SCORE,
+        "query": {"bool": _with_filters(knn, filters)},
+    }
+    return _run(client, body)
+
+
+def _with_filters(bool_query, filters):
+    if filters:
+        bool_query = dict(bool_query)
+        bool_query["filter"] = filters
+    return bool_query
+
+
+def _extract(response):
+    """Return the resource list from a successful _run response, or None on error."""
+    if response.get("statusCode") != 200:
+        return None
+    return json.loads(response["body"]).get("resources", [])
+
+
+def _run(client, body):
     try:
         result = client.search(AOSS_INDEX, body)
     except AossError as exc:
@@ -127,5 +151,4 @@ def handler(event, context):
         src.pop("embedding", None)  # never return the raw vector
         src["_score"] = h.get("_score")
         resources.append(src)
-
     return ok({"count": len(resources), "resources": resources})
