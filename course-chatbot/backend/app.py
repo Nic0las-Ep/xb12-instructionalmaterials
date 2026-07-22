@@ -102,6 +102,41 @@ def get_all_courses():
             'error': 'Failed to retrieve courses'
         }), 500
 
+@app.route('/api/courses', methods=['POST'])
+def add_course():
+    """
+    Save a professor's submitted course form as a new record in the
+    historical dataset, so future suggestions include it.
+    """
+    try:
+        data = request.get_json()
+
+        required_fields = ['professor_name', 'class_name', 'course_number', 'crn_code', 'section']
+        missing = [field for field in required_fields if not data.get(field, '').strip()]
+        if missing:
+            return jsonify({
+                'error': f"Missing required fields: {', '.join(missing)}"
+            }), 400
+
+        record = {field: data.get(field, '').strip() for field in [
+            'professor_name', 'class_name', 'course_number', 'crn_code', 'section',
+            'textbook_title', 'textbook_cost', 'textbook_url',
+            'platform_name', 'platform_cost', 'platform_url'
+        ]}
+
+        suggestion_engine.add_course_record(record)
+
+        return jsonify({
+            'success': True,
+            'message': 'Course information saved.'
+        })
+
+    except Exception as e:
+        print(f"Error in /api/courses POST: {str(e)}")
+        return jsonify({
+            'error': 'Failed to save course information.'
+        }), 500
+
 if __name__ == '__main__':
     print("=" * 60)
     print("Course Material Chatbot Backend")
@@ -112,6 +147,7 @@ if __name__ == '__main__':
     print("  - POST /api/suggestions - Get course suggestions")
     print("  - GET  /api/health      - Health check")
     print("  - GET  /api/courses     - List all courses")
+    print("  - POST /api/courses     - Save a submitted course record")
     print("=" * 60)
     
     app.run(debug=True, host='0.0.0.0', port=5001)

@@ -47,7 +47,19 @@ class SuggestionEngine:
             'english': 'ENGL',
             'composition': 'ENGL',
             'chem': 'CHEM',
-            'chemistry': 'CHEM'
+            'chemistry': 'CHEM',
+            'phys': 'PHYS',
+            'physics': 'PHYS'
+        }
+
+        # Calculus is numbered 1A-1D at Foothill-De Anza rather than 1-4, so
+        # "Calculus II" needs an explicit mapping instead of the generic
+        # department+number pattern below.
+        self.calculus_sequence = {
+            'i': 'A', '1': 'A',
+            'ii': 'B', '2': 'B',
+            'iii': 'C', '3': 'C',
+            'iv': 'D', '4': 'D'
         }
     
     def _load_csv_data(self) -> List[Dict]:
@@ -73,11 +85,24 @@ class SuggestionEngine:
         """
         query_lower = query.lower().strip()
 
-        # Pattern 1: Department name + number (e.g., "Biology 10", "Calculus 1A")
+        # Pattern 0: Calculus sequence by roman numeral or plain number
+        # (e.g., "Calculus II", "Calc 3") -> MATH 1A/1B/1C/1D.
+        sequence_pattern = r'\b(calculus|calc)\s+(iv|iii|ii|i|[1-4])\b'
+        match0 = re.search(sequence_pattern, query_lower)
+        if match0:
+            letter = self.calculus_sequence[match0.group(2)]
+            return {
+                'department': 'MATH',
+                'number': f'1{letter}',
+                'display_name': f'MATH 1{letter}',
+                'original_query': query
+            }
+
+        # Pattern 1: Department name + number (e.g., "Biology 10", "Physics 4A")
         # Checked before the direct-code pattern below, otherwise a full
         # department word like "Biology" gets treated as a literal (and
         # non-matching) department code instead of being mapped to "BIOL".
-        pattern1 = r'(biology|bio|calculus|calc|chemistry|chem|english|programming|computer science|cs|math|mathematics)\s*(\d+[A-Za-z]*)'
+        pattern1 = r'(biology|bio|calculus|calc|chemistry|chem|english|programming|computer science|cs|physics|phys|math|mathematics)\s*(\d+[A-Za-z]*)'
         match1 = re.search(pattern1, query_lower)
         if match1:
             dept_word = match1.group(1)
@@ -107,18 +132,19 @@ class SuggestionEngine:
             }
         
         # Pattern 3: Full course name search (e.g., "Introduction to Biology")
-        for dept_word, dept_code in self.course_aliases.items():
-            if dept_word in query_lower:
-                # Search in CSV for matching course names
-                for row in self.course_data:
-                    if query_lower in row['class_name'].lower():
-                        course_num = row['course_number'].split()[-1]  # Extract number part
-                        return {
-                            'department': dept_code,
-                            'number': course_num,
-                            'display_name': row['class_name'],
-                            'original_query': query
-                        }
+        # Department/number come straight from the matched row's own
+        # course_number -- not derived from whichever alias word happens to
+        # be a substring of the query, since e.g. "physics" contains "cs".
+        for row in self.course_data:
+            if query_lower in row['class_name'].lower():
+                course_parts = row['course_number'].split()
+                if len(course_parts) >= 2:
+                    return {
+                        'department': course_parts[0],
+                        'number': course_parts[1],
+                        'display_name': row['class_name'],
+                        'original_query': query
+                    }
         
         return None
     
@@ -241,6 +267,28 @@ class SuggestionEngine:
         
         return validation
     
+    def add_course_record(self, record: Dict) -> None:
+        """
+        Append a professor's submitted course info to the CSV dataset and
+        keep the in-memory copy in sync so it's reflected in suggestions
+        immediately, without needing a server restart.
+        """
+        fieldnames = ['professor_name', 'class_name', 'course_number', 'crn_code',
+                      'section', 'textbook_title', 'textbook_cost', 'textbook_url',
+                      'platform_name', 'platform_cost', 'platform_url']
+
+        with open(self.csv_path, 'rb') as file:
+            file.seek(-1, os.SEEK_END)
+            ends_with_newline = file.read(1) == b'\n'
+
+        with open(self.csv_path, 'a', newline='', encoding='utf-8') as file:
+            if not ends_with_newline:
+                file.write('\n')
+            writer = csv.writer(file)
+            writer.writerow([record.get(field, '') for field in fieldnames])
+
+        self.course_data.append({field: record.get(field, '') for field in fieldnames})
+
     def get_all_courses(self) -> List[Dict]:
         """
         Get all available courses (for debugging and API access)

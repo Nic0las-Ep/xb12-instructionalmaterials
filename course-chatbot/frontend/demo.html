@@ -39,7 +39,101 @@
         }
 
         .form-group {
+            position: relative;
             margin-bottom: 24px;
+        }
+
+        /* Field suggestion dropdowns */
+        .suggestions-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            margin-top: 4px;
+            z-index: 20;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .suggestions-dropdown.active {
+            display: block;
+        }
+
+        .suggestion-option {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .suggestion-option:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-option:hover {
+            background: #f0f8ff;
+        }
+
+        .suggestion-option-title {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .suggestion-option-cost {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .suggestion-option-cost.free {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .suggestions-empty {
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        /* Assignment platform toggle */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        #platform-fields-wrapper {
+            transition: opacity 0.2s;
+        }
+
+        #platform-fields-wrapper.fields-disabled {
+            opacity: 0.5;
+        }
+
+        #platform-fields-wrapper.fields-disabled input {
+            background: #f5f5f5;
+            cursor: not-allowed;
         }
 
         label {
@@ -118,7 +212,7 @@
         <p class="subtitle">Foothill-De Anza Community College District</p>
 
         <div class="info-box">
-            <p>💡 <strong>Need help?</strong> Click the chat button in the bottom-right corner to get textbook and platform suggestions based on what other professors have used!</p>
+            <p>💡 <strong>Need help?</strong> Once you've entered the course name, course number, and section below, we'll suggest textbooks and platforms other professors have used — just click a suggestion to fill in the details. Still have questions? Click the chat button in the bottom-right corner.</p>
         </div>
 
         <form id="course-form">
@@ -153,7 +247,8 @@
 
             <div class="form-group">
                 <label for="textbook">Textbook Title</label>
-                <input type="text" id="textbook" name="textbook" placeholder="Campbell Biology: Concepts & Connections">
+                <input type="text" id="textbook" name="textbook" placeholder="Campbell Biology: Concepts & Connections" autocomplete="off">
+                <div id="textbook-suggestions" class="suggestions-dropdown"></div>
             </div>
 
             <div class="form-row">
@@ -168,20 +263,30 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="platform">Assignment Platform (if applicable)</label>
-                <input type="text" id="platform" name="platform" placeholder="Mastering Biology">
+            <div class="form-group checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="needs-platform">
+                    This class uses an assignment platform (e.g. Mastering, WebAssign, Top Hat)
+                </label>
             </div>
 
-            <div class="form-row">
+            <div id="platform-fields-wrapper">
                 <div class="form-group">
-                    <label for="platform-cost">Platform Cost ($)</label>
-                    <input type="number" id="platform-cost" name="platform-cost" placeholder="120.00" step="0.01">
+                    <label for="platform">Assignment Platform (if applicable)</label>
+                    <input type="text" id="platform" name="platform" placeholder="Mastering Biology" autocomplete="off">
+                    <div id="platform-suggestions" class="suggestions-dropdown"></div>
                 </div>
 
-                <div class="form-group">
-                    <label for="platform-url">Platform URL</label>
-                    <input type="text" id="platform-url" name="platform-url" placeholder="https://...">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="platform-cost">Platform Cost ($)</label>
+                        <input type="number" id="platform-cost" name="platform-cost" placeholder="120.00" step="0.01">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="platform-url">Platform URL</label>
+                        <input type="text" id="platform-url" name="platform-url" placeholder="https://...">
+                    </div>
                 </div>
             </div>
 
@@ -537,11 +642,206 @@
     <script src="chatbot.js"></script>
 
     <script>
-        // Demo form submission handler
-        document.getElementById('course-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Form submitted! In production, this would save to your database.');
-        });
+        (function() {
+            const API_BASE_URL = 'http://localhost:5001/api';
+
+            const professorNameInput = document.getElementById('professor-name');
+            const courseNameInput = document.getElementById('course-name');
+            const courseNumberInput = document.getElementById('course-number');
+            const crnInput = document.getElementById('crn');
+            const sectionInput = document.getElementById('section');
+
+            const textbookInput = document.getElementById('textbook');
+            const textbookCostInput = document.getElementById('textbook-cost');
+            const textbookUrlInput = document.getElementById('textbook-url');
+            const textbookDropdown = document.getElementById('textbook-suggestions');
+
+            const needsPlatformCheckbox = document.getElementById('needs-platform');
+            const platformFieldsWrapper = document.getElementById('platform-fields-wrapper');
+            const platformInput = document.getElementById('platform');
+            const platformCostInput = document.getElementById('platform-cost');
+            const platformUrlInput = document.getElementById('platform-url');
+            const platformDropdown = document.getElementById('platform-suggestions');
+
+            let lastFetchedCourseNumber = null;
+            let cachedTextbooks = [];
+            let cachedPlatforms = [];
+            let debounceTimer = null;
+
+            function allTriggerFieldsFilled() {
+                return courseNameInput.value.trim() && courseNumberInput.value.trim() && sectionInput.value.trim();
+            }
+
+            function formatCost(cost) {
+                const numeric = parseFloat(cost);
+                if (isNaN(numeric) || numeric === 0) {
+                    return { text: 'Free', isFree: true };
+                }
+                return { text: `$${numeric}`, isFree: false };
+            }
+
+            function renderDropdown(dropdownEl, items, labelKey, onSelect) {
+                dropdownEl.innerHTML = '';
+
+                if (!items || items.length === 0) {
+                    dropdownEl.classList.remove('active');
+                    return;
+                }
+
+                items.slice(0, 4).forEach(item => {
+                    const cost = formatCost(item.cost);
+                    const option = document.createElement('div');
+                    option.className = 'suggestion-option';
+                    option.innerHTML = `
+                        <div class="suggestion-option-title">${item[labelKey]}</div>
+                        <div class="suggestion-option-cost ${cost.isFree ? 'free' : ''}">${cost.text}</div>
+                    `;
+                    option.addEventListener('click', () => onSelect(item));
+                    dropdownEl.appendChild(option);
+                });
+
+                dropdownEl.classList.add('active');
+            }
+
+            function selectTextbook(book) {
+                textbookInput.value = book.title;
+                textbookCostInput.value = book.cost;
+                textbookUrlInput.value = book.url;
+                textbookDropdown.classList.remove('active');
+            }
+
+            function selectPlatform(platform) {
+                platformInput.value = platform.name;
+                platformCostInput.value = platform.cost;
+                platformUrlInput.value = platform.url;
+                platformDropdown.classList.remove('active');
+            }
+
+            async function fetchSuggestionsForCourse() {
+                const courseNumber = courseNumberInput.value.trim();
+                if (!courseNumber || courseNumber === lastFetchedCourseNumber) return;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/suggestions`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query: courseNumber })
+                    });
+                    const result = await response.json();
+
+                    lastFetchedCourseNumber = courseNumber;
+                    cachedTextbooks = (result.type === 'suggestions' && result.data.textbooks) || [];
+                    cachedPlatforms = (result.type === 'suggestions' && result.data.platforms) || [];
+
+                    renderDropdown(textbookDropdown, cachedTextbooks, 'title', selectTextbook);
+                    if (needsPlatformCheckbox.checked) {
+                        renderDropdown(platformDropdown, cachedPlatforms, 'name', selectPlatform);
+                    }
+                } catch (error) {
+                    console.error('Course suggestion lookup failed:', error);
+                }
+            }
+
+            function scheduleSuggestionFetch() {
+                if (!allTriggerFieldsFilled()) return;
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(fetchSuggestionsForCourse, 400);
+            }
+
+            [courseNameInput, courseNumberInput, sectionInput].forEach(input => {
+                input.addEventListener('input', scheduleSuggestionFetch);
+                input.addEventListener('blur', scheduleSuggestionFetch);
+            });
+
+            textbookInput.addEventListener('focus', () => {
+                if (cachedTextbooks.length) {
+                    renderDropdown(textbookDropdown, cachedTextbooks, 'title', selectTextbook);
+                }
+            });
+
+            platformInput.addEventListener('focus', () => {
+                if (needsPlatformCheckbox.checked && cachedPlatforms.length) {
+                    renderDropdown(platformDropdown, cachedPlatforms, 'name', selectPlatform);
+                }
+            });
+
+            // Hide dropdowns when clicking outside their field
+            document.addEventListener('click', (e) => {
+                if (!textbookInput.parentElement.contains(e.target)) {
+                    textbookDropdown.classList.remove('active');
+                }
+                if (!platformInput.parentElement.contains(e.target)) {
+                    platformDropdown.classList.remove('active');
+                }
+            });
+
+            // Assignment platform checkbox: gray out platform fields until checked
+            function updatePlatformFieldsState() {
+                const enabled = needsPlatformCheckbox.checked;
+
+                [platformInput, platformCostInput, platformUrlInput].forEach(input => {
+                    input.disabled = !enabled;
+                });
+                platformFieldsWrapper.classList.toggle('fields-disabled', !enabled);
+
+                if (enabled && cachedPlatforms.length) {
+                    renderDropdown(platformDropdown, cachedPlatforms, 'name', selectPlatform);
+                } else {
+                    platformDropdown.classList.remove('active');
+                }
+
+                if (!enabled) {
+                    platformInput.value = '';
+                    platformCostInput.value = '';
+                    platformUrlInput.value = '';
+                }
+            }
+
+            needsPlatformCheckbox.addEventListener('change', updatePlatformFieldsState);
+            updatePlatformFieldsState();
+
+            // Form submission -> save this professor's course info as a new record
+            document.getElementById('course-form').addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const payload = {
+                    professor_name: professorNameInput.value.trim(),
+                    class_name: courseNameInput.value.trim(),
+                    course_number: courseNumberInput.value.trim(),
+                    crn_code: crnInput.value.trim(),
+                    section: sectionInput.value.trim(),
+                    textbook_title: textbookInput.value.trim(),
+                    textbook_cost: textbookCostInput.value.trim(),
+                    textbook_url: textbookUrlInput.value.trim(),
+                    platform_name: needsPlatformCheckbox.checked ? platformInput.value.trim() : '',
+                    platform_cost: needsPlatformCheckbox.checked ? platformCostInput.value.trim() : '',
+                    platform_url: needsPlatformCheckbox.checked ? platformUrlInput.value.trim() : ''
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/courses`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert('Course information submitted and saved!');
+                        this.reset();
+                        lastFetchedCourseNumber = null;
+                        cachedTextbooks = [];
+                        cachedPlatforms = [];
+                        updatePlatformFieldsState();
+                    } else {
+                        alert(result.error || 'Something went wrong saving your course information.');
+                    }
+                } catch (error) {
+                    console.error('Submit error:', error);
+                    alert('Unable to reach the server. Please make sure the backend is running.');
+                }
+            });
+        })();
     </script>
 </body>
 </html>
