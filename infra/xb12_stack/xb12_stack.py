@@ -43,6 +43,8 @@ LOW_COST_THRESHOLD = "50"
 # Amazon Bedrock Titan Text Embeddings v2 (1024-dim, normalized).
 EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
 EMBED_DIM = "1024"
+# Minimum cosine similarity for a semantic search hit to be shown (tunable).
+SIMILARITY_MIN_SCORE = "0.37"
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _BACKEND = os.path.abspath(os.path.join(_HERE, "..", "..", "backend"))
@@ -168,6 +170,7 @@ class Xb12Stack(Stack):
             "LOW_COST_THRESHOLD": LOW_COST_THRESHOLD,
             "EMBED_MODEL_ID": EMBED_MODEL_ID,
             "EMBED_DIM": EMBED_DIM,
+            "SIMILARITY_MIN_SCORE": SIMILARITY_MIN_SCORE,
         }
 
         functions_code = _lambda.Code.from_asset(os.path.join(_BACKEND, "functions"))

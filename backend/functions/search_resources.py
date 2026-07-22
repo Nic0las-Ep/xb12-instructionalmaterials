@@ -25,7 +25,12 @@ from xb12_common.responses import ok, server_error, query_params, http_method, r
 
 AOSS_INDEX = os.environ.get("AOSS_INDEX", "resources")
 
-# Lexical fields used to boost exact/prefix title matches on top of similarity.
+# Minimum cosine-similarity score for a semantic hit to be considered relevant.
+# Calibrated from real query scores: on-topic results sit >= ~0.385 and the
+# unrelated "noise floor" sits <= ~0.365, so 0.37 cleanly separates them.
+SIMILARITY_MIN_SCORE = float(os.environ.get("SIMILARITY_MIN_SCORE", "0.37"))
+
+# Lexical fields (used only as a fallback when embeddings are unavailable).
 _TEXT_FIELDS = ["title^3", "author^2", "publisher", "description"]
 
 
@@ -71,46 +76,39 @@ def handler(event, context):
                 filters.append(clause)
 
     # ---- Query -----------------------------------------------------------
-    should = []
+    # Default: browse (no free-text query) -> match everything, filters apply.
+    bool_query = {"must": [{"match_all": {}}]}
+    min_score = None
+
     if q:
         vector = embeddings.embed_text(q)
         if vector:
-            # Semantic similarity (primary signal).
-            should.append(
-                {
-                    "knn": {
-                        "embedding": {
-                            "vector": vector,
-                            "k": max(size, 25),
-                        }
-                    }
-                }
-            )
-        # Lexical boosts: prefix ("Bio" -> "Biology") and typo tolerance.
-        should.append(
-            {"multi_match": {"query": q, "fields": _TEXT_FIELDS, "type": "phrase_prefix"}}
-        )
-        should.append(
-            {
-                "multi_match": {
-                    "query": q,
-                    "fields": _TEXT_FIELDS,
-                    "fuzziness": "AUTO",
-                    "prefix_length": 1,
-                }
+            # Primary path: pure semantic k-NN, gated by a similarity cutoff so
+            # only genuinely relevant resources are returned (not every doc).
+            # Filters carry no score, so the top-level min_score applies to the
+            # k-NN similarity score directly.
+            bool_query = {
+                "must": [
+                    {"knn": {"embedding": {"vector": vector, "k": max(size, 50)}}}
+                ]
             }
-        )
+            min_score = SIMILARITY_MIN_SCORE
+        else:
+            # Fallback (embeddings unavailable): lexical prefix + fuzzy match.
+            bool_query = {
+                "should": [
+                    {"multi_match": {"query": q, "fields": _TEXT_FIELDS, "type": "phrase_prefix"}},
+                    {"multi_match": {"query": q, "fields": _TEXT_FIELDS, "fuzziness": "AUTO", "prefix_length": 1}},
+                ],
+                "minimum_should_match": 1,
+            }
 
-    bool_query = {}
-    if should:
-        bool_query["should"] = should
-        bool_query["minimum_should_match"] = 1
-    else:
-        bool_query["must"] = [{"match_all": {}}]
     if filters:
         bool_query["filter"] = filters
 
     body = {"size": size, "query": {"bool": bool_query}}
+    if min_score is not None:
+        body["min_score"] = min_score
 
     client = AossClient()
     try:
