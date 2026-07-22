@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Form Demo - Foothill-De Anza</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #003366;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #0066cc;
+            padding: 16px;
+            margin-bottom: 30px;
+            border-radius: 4px;
+        }
+
+        .info-box p {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .submit-btn {
+            background: #0066cc;
+            color: white;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .submit-btn:hover {
+            background: #0052a3;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Course Information Form</h1>
+        <p class="subtitle">Foothill-De Anza Community College District</p>
+
+        <div class="info-box">
+            <p>💡 <strong>Need help?</strong> Click the chat button in the bottom-right corner to get textbook and platform suggestions based on what other professors have used!</p>
+        </div>
+
+        <form id="course-form">
+            <div class="form-group">
+                <label for="professor-name">Professor Name *</label>
+                <input type="text" id="professor-name" name="professor-name" placeholder="Dr. Jane Smith" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="course-name">Course Name *</label>
+                    <input type="text" id="course-name" name="course-name" placeholder="Introduction to Biology" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="course-number">Course Number *</label>
+                    <input type="text" id="course-number" name="course-number" placeholder="BIOL 10" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="crn">CRN Code *</label>
+                    <input type="text" id="crn" name="crn" placeholder="12345" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="section">Section Number *</label>
+                    <input type="text" id="section" name="section" placeholder="01Y" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="textbook">Textbook Title</label>
+                <input type="text" id="textbook" name="textbook" placeholder="Campbell Biology: Concepts & Connections">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="textbook-cost">Textbook Cost ($)</label>
+                    <input type="number" id="textbook-cost" name="textbook-cost" placeholder="145.00" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="textbook-url">Textbook URL</label>
+                    <input type="text" id="textbook-url" name="textbook-url" placeholder="https://...">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="platform">Assignment Platform (if applicable)</label>
+                <input type="text" id="platform" name="platform" placeholder="Mastering Biology">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="platform-cost">Platform Cost ($)</label>
+                    <input type="number" id="platform-cost" name="platform-cost" placeholder="120.00" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="platform-url">Platform URL</label>
+                    <input type="text" id="platform-url" name="platform-url" placeholder="https://...">
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn">Submit Course Information</button>
+        </form>
+    </div>
+
+    <!-- Embed the chatbot widget -->
+    <div id="chatbot-container">
+        <button id="chatbot-button" aria-label="Open chatbot">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+                <path d="M7 9h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
+            </svg>
+        </button>
+
+        <div id="chatbot-window">
+            <div id="chatbot-header">
+                <div>
+                    <h3>Course Assistant</h3>
+                    <p>Textbook & Platform Suggestions</p>
+                </div>
+                <button id="close-button" aria-label="Close chatbot">×</button>
+            </div>
+
+            <div id="chatbot-messages">
+                <div class="message bot">
+                    <div class="message-content">
+                        Hi! I'm here to help you find textbook and assignment platform options based on what other professors have used. Just type in your course name to get started!
+                    </div>
+                </div>
+            </div>
+
+            <div id="chatbot-input-area">
+                <input 
+                    type="text" 
+                    id="chatbot-input" 
+                    placeholder="Type your course name..."
+                    aria-label="Message input"
+                />
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include the styles and script from chatbot-widget.html -->
+    <style>
+        /* Chatbot Container */
+        #chatbot-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* Floating Button */
+        #chatbot-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0066cc, #004d99);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        #chatbot-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 102, 204, 0.6);
+        }
+
+        #chatbot-button svg {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+
+        /* Chat Window */
+        #chatbot-window {
+            display: none;
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            width: 380px;
+            height: 550px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+
+        #chatbot-window.active {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Header */
+        #chatbot-header {
+            background: linear-gradient(135deg, #0066cc, #004d99);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #chatbot-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        #chatbot-header p {
+            margin: 4px 0 0 0;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        #close-button {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        #close-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Messages Area */
+        #chatbot-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        /* Message Bubbles */
+        .message {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.bot {
+            align-items: flex-start;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 75%;
+            word-wrap: break-word;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .message.user .message-content {
+            background: #0066cc;
+            color: white;
+        }
+
+        /* Suggestions List */
+        .suggestions-list {
+            margin-top: 12px;
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .suggestion-item {
+            padding: 10px;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 13px;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .suggestion-details {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .suggestion-link {
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 12px;
+        }
+
+        .suggestion-link:hover {
+            text-decoration: underline;
+        }
+
+        .section-header {
+            font-weight: 600;
+            color: #0066cc;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            width: fit-content;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Input Area */
+        #chatbot-input-area {
+            padding: 16px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 8px;
+        }
+
+        #chatbot-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #chatbot-input:focus {
+            border-color: #0066cc;
+        }
+
+        #send-button {
+            padding: 12px 20px;
+            background: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        #send-button:hover {
+            background: #0052a3;
+        }
+
+        #send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Scrollbar Styling */
+        #chatbot-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #chatbot-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        #chatbot-messages::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        #chatbot-messages::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+
+    <script src="chatbot.js"></script>
+
+    <script>
+        // Demo form submission handler
+        document.getElementById('course-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Form submitted! In production, this would save to your database.');
+        });
+    </script>
+</body>
+</html>
