@@ -70,39 +70,58 @@ class AossClient:
                 return False
             raise
 
-    def ensure_index(self, index, mapping=None):
-        """Create the index (idempotent) with a keyword/text friendly mapping."""
+    def ensure_index(self, index, mapping=None, embed_dim=None):
+        """
+        Create the index (idempotent). When ``embed_dim`` is provided the index
+        is a k-NN vector index (for semantic similarity search) with an
+        ``embedding`` knn_vector field alongside the lexical fields.
+        """
         if self.index_exists(index):
             return
-        default_mapping = {
-            "settings": {"index.knn": False},
-            "mappings": {
-                "properties": {
-                    "id": {"type": "keyword"},
-                    "title": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
-                    "author": {"type": "text"},
-                    "publisher": {"type": "text"},
-                    "ISBN": {"type": "keyword"},
-                    "url": {"type": "keyword"},
-                    "subject": {"type": "keyword"},
-                    "classNumber": {"type": "keyword"},
-                    "materialType": {"type": "keyword"},
-                    "costType": {"type": "keyword"},
-                    "xb12Code": {"type": "keyword"},
-                    "ztcLtc": {"type": "keyword"},
-                    "price": {"type": "float"},
-                    "description": {"type": "text"},
-                    "createdAt": {"type": "date"},
-                }
-            },
-        }
+        if mapping is None:
+            mapping = self._default_mapping(embed_dim)
         try:
-            self.request("PUT", f"/{index}", mapping or default_mapping)
+            self.request("PUT", f"/{index}", mapping)
         except AossError as exc:
             # Tolerate a race where another invocation created it first.
             if exc.status == 400 and "resource_already_exists" in exc.body:
                 return
             raise
+
+    @staticmethod
+    def _default_mapping(embed_dim=None):
+        properties = {
+            "id": {"type": "keyword"},
+            "title": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+            "author": {"type": "text"},
+            "publisher": {"type": "text"},
+            "ISBN": {"type": "keyword"},
+            "url": {"type": "keyword"},
+            "subject": {"type": "keyword"},
+            "classNumber": {"type": "keyword"},
+            "materialType": {"type": "keyword"},
+            "costType": {"type": "keyword"},
+            "xb12Code": {"type": "keyword"},
+            "ztcLtc": {"type": "keyword"},
+            "price": {"type": "float"},
+            "description": {"type": "text"},
+            "createdAt": {"type": "date"},
+        }
+        settings = {}
+        if embed_dim:
+            settings["index.knn"] = True
+            properties["embedding"] = {
+                "type": "knn_vector",
+                "dimension": int(embed_dim),
+                "method": {
+                    "name": "hnsw",
+                    "engine": "faiss",
+                    # Vectors are normalized, so L2 nearest-neighbour ranking is
+                    # monotonic with cosine similarity.
+                    "space_type": "l2",
+                },
+            }
+        return {"settings": settings, "mappings": {"properties": properties}}
 
     def index_document(self, index, doc_id, document):
         # OpenSearch Serverless does not support caller-supplied document IDs

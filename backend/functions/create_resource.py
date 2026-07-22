@@ -22,6 +22,7 @@ from decimal import Decimal
 import boto3
 
 from xb12_common import xb12
+from xb12_common import embeddings
 from xb12_common.aoss import AossClient
 from xb12_common.responses import (
     ok,
@@ -35,6 +36,7 @@ from xb12_common.responses import (
 RESOURCE_TABLE = os.environ["RESOURCE_TABLE"]
 AOSS_INDEX = os.environ.get("AOSS_INDEX", "resources")
 LOW_COST_THRESHOLD = os.environ.get("LOW_COST_THRESHOLD", "50")
+EMBED_DIM = int(os.environ.get("EMBED_DIM", "1024"))
 
 _dynamodb = boto3.resource("dynamodb")
 _table = _dynamodb.Table(RESOURCE_TABLE)
@@ -120,14 +122,25 @@ def handler(event, context):
     search_doc = dict(item)
     if isinstance(search_doc.get("price"), Decimal):
         search_doc["price"] = float(search_doc["price"])
+
+    # Semantic embedding for vector-similarity search (tolerates partial words
+    # and typos). Falls back to lexical-only indexing if embedding is
+    # unavailable.
+    vector = embeddings.embed_text(embeddings.resource_text(search_doc))
+    if vector:
+        search_doc["embedding"] = vector
+
     index_warning = None
     try:
         client = AossClient()
-        client.ensure_index(AOSS_INDEX)
+        client.ensure_index(AOSS_INDEX, embed_dim=EMBED_DIM)
         client.index_document(AOSS_INDEX, resource_id, search_doc)
     except Exception as exc:  # noqa: BLE001
         # The catalog write succeeded; report search indexing as a soft failure.
         index_warning = f"Resource saved but search indexing failed: {exc}"
+
+    # Do not echo the (large) embedding vector back to the client.
+    search_doc.pop("embedding", None)
 
     response = {
         "success": True,

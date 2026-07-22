@@ -37,8 +37,12 @@ HISTORY_TABLE = "Textbookhistory-index"
 COLLECTION_NAME = "resource-index"
 COLLECTION_ID = "78ef54x7of34cghphp6g"
 AOSS_ENDPOINT = f"https://{COLLECTION_ID}.us-west-2.aoss.amazonaws.com"
-AOSS_INDEX = "resources"
+# Vector-enabled index (knn_vector mapping) for semantic similarity search.
+AOSS_INDEX = "resources_v2"
 LOW_COST_THRESHOLD = "50"
+# Amazon Bedrock Titan Text Embeddings v2 (1024-dim, normalized).
+EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
+EMBED_DIM = "1024"
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _BACKEND = os.path.abspath(os.path.join(_HERE, "..", "..", "backend"))
@@ -97,6 +101,16 @@ class Xb12Stack(Stack):
                 resources=[collection_arn],
             )
         )
+        # Amazon Bedrock access for Titan text embeddings (semantic search).
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["bedrock:InvokeModel"],
+                resources=[
+                    f"arn:aws:bedrock:{self.region}::foundation-model/amazon.titan-embed-text-v2:0",
+                    f"arn:aws:bedrock:{self.region}::foundation-model/amazon.titan-embed-text-v1",
+                ],
+            )
+        )
 
         # ---- AOSS data access policy for the Lambda role -----------------
         # Grants the execution role read/write on the collection's indexes.
@@ -152,6 +166,8 @@ class Xb12Stack(Stack):
             "AOSS_ENDPOINT": AOSS_ENDPOINT,
             "AOSS_INDEX": AOSS_INDEX,
             "LOW_COST_THRESHOLD": LOW_COST_THRESHOLD,
+            "EMBED_MODEL_ID": EMBED_MODEL_ID,
+            "EMBED_DIM": EMBED_DIM,
         }
 
         functions_code = _lambda.Code.from_asset(os.path.join(_BACKEND, "functions"))
