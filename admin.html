@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OER Survey Administration – Fall 2025</title>
+  <style>
+    /* =====================================================
+       DESIGN TOKENS – change colors here
+       ===================================================== */
+    :root {
+      --burg:        #7F182E;
+      --burg-dark:   #5e1122;
+      --burg-light:  rgba(127,24,46,0.08);
+      --gold:        #E9C451;
+      --gold-light:  rgba(233,196,81,0.18);
+      --bg:          #f2f3f5;
+      --card:        #ffffff;
+      --border:      #e2e4e8;
+      --text:        #1a1a2e;
+      --muted:       #6b7280;
+      --success:     #16a34a;
+      --warn:        #d97706;
+      --info:        #2563eb;
+      --danger:      #dc2626;
+      --radius:      8px;
+      --shadow:      0 2px 12px rgba(0,0,0,0.08);
+      --shadow-lg:   0 8px 32px rgba(0,0,0,0.16);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── HEADER ── */
+    .site-header {
+      background: var(--burg);
+      color: #fff;
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+    .header-logo {
+      background: var(--gold);
+      color: var(--burg);
+      font-weight: 900;
+      font-size: 0.75rem;
+      padding: 5px 12px;
+      clip-path: polygon(6% 0%,100% 0%,94% 100%,0% 100%);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .header-titles h1 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .header-titles p {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.72);
+      margin-top: 1px;
+    }
+    .header-badge {
+      background: var(--gold);
+      color: var(--burg);
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 4px 12px;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+    .gold-bar { height: 5px; background: var(--gold); }
+
+    /* ── PAGE LAYOUT ── */
+    .page { max-width: 1280px; margin: 0 auto; padding: 1.8rem 1.5rem 4rem; }
+
+    /* ── STAT CARDS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.8rem;
+    }
+    .stat-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.1rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-top: 4px solid var(--burg);
+      transition: transform 0.15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); }
+    .stat-card.gold  { border-top-color: var(--gold); }
+    .stat-card.green { border-top-color: var(--success); }
+    .stat-card.amber { border-top-color: var(--warn); }
+    .stat-card.blue  { border-top-color: var(--info); }
+    .stat-card.red   { border-top-color: var(--danger); }
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--burg);
+      line-height: 1;
+    }
+    .stat-card.gold  .stat-value { color: #b8841a; }
+    .stat-card.green .stat-value { color: var(--success); }
+    .stat-card.amber .stat-value { color: var(--warn); }
+    .stat-card.blue  .stat-value { color: var(--info); }
+    .stat-card.red   .stat-value { color: var(--danger); }
+    .stat-sub {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    /* ── MAIN CARD ── */
+    .main-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .main-card-header {
+      padding: 1.1rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .main-card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--burg);
+    }
+
+    /* ── FILTERS ── */
+    .filters {
+      padding: 1rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: flex-end;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 3px; flex: 1 1 160px; }
+    .filter-group label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .filter-group input,
+    .filter-group select {
+      padding: 7px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.18s;
+      width: 100%;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus { border-color: var(--burg); }
+    .btn-clear-filters {
+      padding: 7px 16px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      align-self: flex-end;
+      transition: border-color 0.18s, color 0.18s;
+    }
+    .btn-clear-filters:hover { border-color: var(--burg); color: var(--burg); }
+
+    /* ── RESULTS META ── */
+    .results-meta {
+      padding: 0.6rem 1.4rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    thead { background: var(--burg-light); }
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--burg);
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--burg-light); }
+    tbody td { padding: 11px 14px; vertical-align: middle; }
+    .td-name { font-weight: 600; }
+    .td-course { color: var(--muted); font-size: 0.83rem; }
+
+    /* ── STATUS BADGES ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .badge-pending       { background: rgba(37,99,235,0.1);  color: #2563eb; }
+    .badge-under-review  { background: rgba(217,119,6,0.12); color: #d97706; }
+    .badge-approved      { background: rgba(22,163,74,0.12); color: #16a34a; }
+    .badge-needs-correction { background: rgba(220,38,38,0.1); color: #dc2626; }
+
+    /* ── MATERIAL TYPE CHIPS ── */
+    .chip {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .chip-ltc  { background: rgba(233,196,81,0.25);  color: #92650a; }
+    .chip-ztc  { background: rgba(22,163,74,0.12);   color: #15803d; }
+    .chip-sub  { background: rgba(37,99,235,0.1);    color: #1d4ed8; }
+    .chip-none { background: rgba(107,114,128,0.12); color: #4b5563; }
+
+    /* ── VIEW BUTTON ── */
+    .btn-view {
+      padding: 5px 14px;
+      background: var(--burg);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn-view:hover  { background: var(--burg-dark); }
+    .btn-view:active { transform: scale(0.96); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* ══════════════════════════════════════
+       MODAL OVERLAY
+       ══════════════════════════════════════ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(20,5,10,0.55);
+      z-index: 500;
+      overflow-y: auto;
+      padding: 2rem 1rem 3rem;
+    }
+    .modal-overlay.open { display: block; }
+
+    .modal {
+      background: var(--card);
+      max-width: 760px;
+      margin: 0 auto;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      animation: modalIn 0.25s ease;
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Modal header */
+    .modal-header {
+      background: var(--burg);
+      color: #fff;
+      padding: 1.2rem 1.5rem;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .modal-header-info h2 { font-size: 1.1rem; font-weight: 800; }
+    .modal-header-info p  { font-size: 0.78rem; color: rgba(255,255,255,0.7); margin-top: 3px; }
+    .modal-close {
+      background: none;
+      border: 2px solid rgba(255,255,255,0.4);
+      color: #fff;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.18s;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.15); }
+    .modal-gold-bar { height: 4px; background: var(--gold); }
+
+    /* Modal body */
+    .modal-body { padding: 1.5rem; }
+
+    /* Detail sections */
+    .detail-section { margin-bottom: 1.4rem; }
+    .detail-section-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--burg);
+      background: var(--burg-light);
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 99px;
+      margin-bottom: 10px;
+    }
+    .detail-row {
+      display: flex;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #f2f3f5;
+      font-size: 0.88rem;
+      align-items: flex-start;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { flex: 0 0 42%; color: var(--muted); font-size: 0.82rem; }
+    .detail-value { flex: 1; font-weight: 600; word-break: break-word; white-space: pre-wrap; }
+    .detail-link  { color: var(--burg); text-decoration: underline; word-break: break-all; }
+
+    /* Rank list */
+    .rank-display { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .rank-display li {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.88rem; font-weight: 500;
+    }
+    .rank-num-badge {
+      width: 20px; height: 20px;
+      background: var(--burg); color: #fff;
+      border-radius: 50%;
+      font-size: 0.68rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── REVIEW PANEL ── */
+    .review-panel {
+      border-top: 2px solid var(--border);
+      padding: 1.2rem 1.5rem 1.5rem;
+      background: #fafafa;
+    }
+    .review-panel-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--burg);
+      margin-bottom: 0.9rem;
+    }
+    .review-controls { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
+    .review-group { display: flex; flex-direction: column; gap: 4px; flex: 1 1 180px; }
+    .review-group label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .review-group select,
+    .review-group textarea {
+      padding: 8px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.18s;
+      width: 100%;
+    }
+    .review-group select:focus,
+    .review-group textarea:focus { border-color: var(--burg); }
+    .review-group textarea { resize: vertical; min-height: 72px; }
+    .review-notes-group { flex: 1 1 100%; }
+
+    .review-actions { display: flex; gap: 0.65rem; margin-top: 0.9rem; flex-wrap: wrap; }
+    .btn-save {
+      padding: 9px 24px;
+      background: var(--burg);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .btn-save:hover { background: var(--burg-dark); }
+    .btn-close-modal {
+      padding: 9px 20px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.18s, color 0.18s;
+    }
+    .btn-close-modal:hover { border-color: var(--burg); color: var(--burg); }
+    .save-feedback {
+      font-size: 0.8rem;
+      color: var(--success);
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 5px;
+    }
+    .save-feedback.show { display: flex; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 680px) {
+      .site-header { padding: 0 1rem; }
+      .header-logo { display: none; }
+      .page { padding: 1rem 0.75rem 3rem; }
+      .filters { padding: 0.75rem; }
+      .detail-row { flex-direction: column; gap: 2px; }
+      .detail-label { flex: none; }
+    }
+
+    /* ── DEMO BANNER ── */
+    .demo-banner {
+      background: #fefce8;
+      border-bottom: 2px solid #E9C451;
+      padding: 8px 2rem;
+      font-size: 0.78rem;
+      color: #78350f;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .demo-banner strong { color: #92400e; }
+
+    /* ── SETTINGS CARD ── */
+    .settings-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-top: 1.4rem;
+      overflow: hidden;
+    }
+    .settings-header {
+      padding: 0.8rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .settings-body {
+      padding: 1rem 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .btn-danger-outline {
+      padding: 8px 18px;
+      background: transparent;
+      border: 1.5px solid var(--danger);
+      color: var(--danger);
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .btn-danger-outline:hover { background: rgba(220,38,38,0.07); }
+    .settings-note {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    /* ── REFRESH BUTTON (header area) ── */
+    .btn-refresh {
+      padding: 5px 14px;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color 0.18s, color 0.18s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-refresh:hover { border-color: var(--burg); color: var(--burg); }
+
+    /* ── DELETE SUBMISSION BUTTON (inside modal review panel) ── */
+    .btn-delete-sub {
+      padding: 9px 18px;
+      background: transparent;
+      border: 1.5px solid var(--danger);
+      color: var(--danger);
+      border-radius: 6px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s;
+      margin-left: auto;
+    }
+    .btn-delete-sub:hover { background: rgba(220,38,38,0.08); }
+
+    /* ── DEEP-LINK ERROR ── */
+    .deeplink-error {
+      display: none;
+      background: #fef2f2;
+      border: 1.5px solid #fca5a5;
+      color: #991b1b;
+      border-radius: 8px;
+      padding: 1rem 1.4rem;
+      margin-bottom: 1.2rem;
+      font-size: 0.9rem;
+    }
+    .deeplink-error.show { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ══ SITE HEADER ══ -->
+<header class="site-header" role="banner">
+  <div class="header-left">
+    <span class="header-logo">OER Admin</span>
+    <div class="header-titles">
+      <h1>OER Survey Administration</h1>
+      <p>Fall 2025 Submission Review</p>
+    </div>
+  </div>
+  <div class="header-badge" id="header-total-badge">0 Submissions</div>
+</header>
+<div class="gold-bar"></div>
+
+<!-- ══ DEMO BANNER ══ -->
+<div class="demo-banner" role="note">
+  ⚠ <strong>Local demonstration only</strong> — submissions are stored in this browser's localStorage and are not protected by a server-side administrator login.
+</div>
+
+<!-- ══ MAIN PAGE ══ -->
+<main class="page" role="main">
+
+  <!-- Deep-link error (shown if ?id= param has no match) -->
+  <div class="deeplink-error" id="deeplink-error" role="alert"></div>
+
+  <!-- ── STAT CARDS ── -->
+  <section class="stats-grid" aria-label="Submission statistics">
+    <div class="stat-card">
+      <div class="stat-label">Total Submissions</div>
+      <div class="stat-value" id="stat-total">0</div>
+      <div class="stat-sub">All responses received</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value" id="stat-pending">0</div>
+      <div class="stat-sub">Awaiting review</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Under Review</div>
+      <div class="stat-value" id="stat-under-review">0</div>
+      <div class="stat-sub">Currently reviewing</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Approved</div>
+      <div class="stat-value" id="stat-approved">0</div>
+      <div class="stat-sub">Ready to publish</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Needs Correction</div>
+      <div class="stat-value" id="stat-needs-correction">0</div>
+      <div class="stat-sub">Requires follow-up</div>
+    </div>
+    <div class="stat-card gold">
+      <div class="stat-label">LTC Courses</div>
+      <div class="stat-value" id="stat-ltc">0</div>
+      <div class="stat-sub">Low-cost material</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">ZTC Courses</div>
+      <div class="stat-value" id="stat-ztc">0</div>
+      <div class="stat-sub">Zero-cost material</div>
+    </div>
+  </section>
+
+  <!-- ── SUBMISSIONS TABLE CARD ── -->
+  <div class="main-card">
+    <div class="main-card-header">
+      <span class="main-card-title">Survey Submissions</span>
+      <button class="btn-refresh" onclick="refreshFromStorage()" type="button" aria-label="Reload submissions from localStorage">
+        ↻ Refresh
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters" role="search" aria-label="Filter submissions">
+      <div class="filter-group">
+        <label for="f-name">Instructor Name</label>
+        <input type="text" id="f-name" placeholder="Search name…" oninput="applyFilters()" />
+      </div>
+      <div class="filter-group">
+        <label for="f-course">Course Number</label>
+        <input type="text" id="f-course" placeholder="e.g. ENGL 100" oninput="applyFilters()" />
+      </div>
+      <div class="filter-group">
+        <label for="f-crn">CRN</label>
+        <input type="text" id="f-crn" placeholder="e.g. 12345" oninput="applyFilters()" />
+      </div>
+      <div class="filter-group">
+        <label for="f-material">Material Type</label>
+        <select id="f-material" onchange="applyFilters()">
+          <option value="">All Types</option>
+          <option>Low-Cost Material (LTC)</option>
+          <option>Zero-Cost Material (ZTC)</option>
+          <option>College-subsidized material</option>
+          <option>No instructional material</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="f-status">Review Status</label>
+        <select id="f-status" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option>Pending</option>
+          <option>Under Review</option>
+          <option>Approved</option>
+          <option>Needs Correction</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="f-sort">Sort</label>
+        <select id="f-sort" onchange="applyFilters()">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </div>
+      <button class="btn-clear-filters" onclick="clearFilters()" type="button">Clear Filters</button>
+    </div>
+
+    <!-- Results meta -->
+    <div class="results-meta" id="results-meta">Showing 0 submissions</div>
+
+    <!-- Table -->
+    <div class="table-wrap" role="region" aria-label="Submissions table" tabindex="0">
+      <table aria-describedby="results-meta">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Class They Teach</th>
+            <th>CRN</th>
+            <th>Material Type</th>
+            <th>Submitted</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="submissions-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="empty-state" style="display:none">
+        <div class="icon">📋</div>
+        <p>No survey submissions have been received yet.</p>
+      </div>
+    </div>
+  </div><!-- /.main-card -->
+
+  <!-- ── ADMIN SETTINGS ── -->
+  <div class="settings-card">
+    <div class="settings-header">⚙ Admin Settings</div>
+    <div class="settings-body">
+      <button class="btn-danger-outline" onclick="deleteAllSubmissions()" type="button">
+        🗑 Delete All Local Submissions
+      </button>
+      <span class="settings-note">
+        Permanently removes every submission from this browser's localStorage.
+        This cannot be undone.
+      </span>
+    </div>
+  </div>
+
+</main><!-- /.page -->
+
+<!-- ══════════════════════════════════════════════
+     SUBMISSION DETAIL MODAL
+══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-label="Submission detail">
+  <div class="modal" id="modal">
+
+    <!-- Modal header -->
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <h2 id="modal-title">Submission Detail</h2>
+        <p id="modal-subtitle"></p>
+      </div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close modal">&#x2715;</button>
+    </div>
+    <div class="modal-gold-bar"></div>
+
+    <!-- Detail body (dynamically filled) -->
+    <div class="modal-body" id="modal-body"></div>
+
+    <!-- Review controls -->
+    <div class="review-panel">
+      <div class="review-panel-title">Administrator Review</div>
+      <div class="review-controls">
+        <div class="review-group">
+          <label for="review-status">Review Status</label>
+          <select id="review-status">
+            <option>Pending</option>
+            <option>Under Review</option>
+            <option>Approved</option>
+            <option>Needs Correction</option>
+          </select>
+        </div>
+        <div class="review-group review-notes-group">
+          <label for="review-notes">Administrator Notes</label>
+          <textarea id="review-notes" placeholder="Internal notes (not visible to respondent)…"></textarea>
+        </div>
+      </div>
+      <div class="review-actions">
+        <button class="btn-save" onclick="saveReview()" type="button">Save Review</button>
+        <button class="btn-close-modal" onclick="closeModal()" type="button">Close</button>
+        <span class="save-feedback" id="save-feedback" aria-live="polite">&#10003; Saved</span>
+        <button class="btn-delete-sub" onclick="deleteSubmission()" type="button"
+          aria-label="Delete this submission">🗑 Delete Submission</button>
+      </div>
+    </div>
+
+  </div><!-- /.modal -->
+</div><!-- /.modal-overlay -->
+
+<script>
+/* ================================================================
+   OER SURVEY ADMIN DASHBOARD
+   ================================================================
+   SECTIONS
+   1.  SAMPLE DATA  – replace with localStorage / API call later
+   2.  STATE        – active filters, open submission ID
+   3.  STATS        – compute and render summary cards
+   4.  RENDER TABLE – filter, sort, build rows
+   5.  MODAL        – open, build detail, close
+   6.  REVIEW       – save status + notes back into data[]
+   7.  FILTERS      – apply, clear
+   8.  UTILS        – escHTML, formatDate, badges, chips, URL parse
+   9.  INIT         – boot on DOMContentLoaded
+   ================================================================ */
+
+
+/* ================================================================
+   1. DATA — loaded from localStorage, NOT hardcoded.
+
+   The key 'oerSurveySubmissions' is the single source of truth
+   shared between survey.html and admin.html. Any tab that changes
+   this key notifies other open tabs via:
+     • BroadcastChannel('oer-survey-updates')  (modern browsers)
+     • the window 'storage' event               (cross-tab fallback)
+
+   To swap to a real API, replace loadFromStorage() with a
+   fetch() call and saveToStorage() with a PUT/POST.
+   ================================================================ */
+
+const LS_KEY = 'oerSurveySubmissions';
+
+/* loadFromStorage()
+   Reads and safely parses the localStorage array.
+   Returns [] on any error so the page never crashes. */
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.warn('OER Admin: could not read localStorage:', err);
+    return [];
+  }
+}
+
+/* saveToStorage(array)
+   Writes the full submissions array back to localStorage and
+   returns true on success, false on failure. */
+function saveToStorage(array) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(array));
+    return true;
+  } catch (err) {
+    console.error('OER Admin: could not write localStorage:', err);
+    alert('⚠ Could not save changes: ' + err.message);
+    return false;
+  }
+}
+
+/* refreshFromStorage()
+   Re-reads localStorage and re-renders the whole dashboard.
+   Called by the Refresh button and by live-sync listeners. */
+function refreshFromStorage() {
+  SUBMISSIONS = loadFromStorage();
+  updateStats();
+  applyFilters();
+}
+
+/* Live working copy — populated at DOMContentLoaded and refreshed
+   whenever the storage or BroadcastChannel events fire. */
+let SUBMISSIONS = loadFromStorage();
+
+
+/* ================================================================
+   2. STATE
+   ================================================================ */
+let currentSubmissionId = null; // ID of the submission open in the modal
+
+
+/* ================================================================
+   3. STATS – compute counts and update the dashboard cards
+   ================================================================ */
+function updateStats() {
+  const all = SUBMISSIONS;
+
+  setText('stat-total',           all.length);
+  setText('stat-pending',         all.filter(s => s.status === 'Pending').length);
+  setText('stat-under-review',    all.filter(s => s.status === 'Under Review').length);
+  setText('stat-approved',        all.filter(s => s.status === 'Approved').length);
+  setText('stat-needs-correction',all.filter(s => s.status === 'Needs Correction').length);
+  setText('stat-ltc',             all.filter(s => s.materialType === 'Low-Cost Material (LTC)').length);
+  setText('stat-ztc',             all.filter(s => s.materialType === 'Zero-Cost Material (ZTC)').length);
+
+  const totalEl = document.getElementById('header-total-badge');
+  if (totalEl) totalEl.textContent = `${all.length} Submission${all.length !== 1 ? 's' : ''}`;
+}
+
+
+/* ================================================================
+   4. RENDER TABLE
+   Reads filter inputs, filters + sorts SUBMISSIONS, builds rows.
+   ================================================================ */
+function applyFilters() {
+  const nameQ    = val('f-name').toLowerCase();
+  const courseQ  = val('f-course').toLowerCase();
+  const crnQ     = val('f-crn').toLowerCase();
+  const matQ     = val('f-material');
+  const statusQ  = val('f-status');
+  const sortDir  = val('f-sort');   // 'newest' | 'oldest'
+
+  let results = SUBMISSIONS.filter(s => {
+    if (nameQ   && !s.respondentName.toLowerCase().includes(nameQ))   return false;
+    if (courseQ && !s.courseNumber.toLowerCase().includes(courseQ))    return false;
+    // CRN field can contain multiple lines – check all of them
+    if (crnQ    && !s.crn.toLowerCase().includes(crnQ))               return false;
+    if (matQ    && s.materialType !== matQ)                            return false;
+    if (statusQ && s.status !== statusQ)                               return false;
+    return true;
+  });
+
+  // Sort by submission date
+  results.sort((a, b) => {
+    const ta = new Date(a.submittedAt).getTime();
+    const tb = new Date(b.submittedAt).getTime();
+    return sortDir === 'oldest' ? ta - tb : tb - ta;
+  });
+
+  renderTable(results);
+}
+
+function renderTable(list) {
+  const tbody     = document.getElementById('submissions-tbody');
+  const emptyEl   = document.getElementById('empty-state');
+  const metaEl    = document.getElementById('results-meta');
+
+  metaEl.textContent = `Showing ${list.length} submission${list.length !== 1 ? 's' : ''}`;
+
+  if (list.length === 0) {
+    tbody.innerHTML  = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  tbody.innerHTML = list.map(s => {
+    const courseDisplay = `${esc(s.department)} – ${esc(s.courseNumber)}`;
+    // CRN may have multiple lines; show first + indicator
+    const crnLines   = s.crn.split('\n').map(c => c.trim()).filter(Boolean);
+    const crnDisplay = crnLines[0] + (crnLines.length > 1 ? ` +${crnLines.length - 1}` : '');
+
+    return `<tr>
+      <td class="td-name">${esc(s.respondentName)}</td>
+      <td>
+        <div>${courseDisplay}</div>
+        <div class="td-course">${esc(s.department)}</div>
+      </td>
+      <td>${esc(crnDisplay)}</td>
+      <td>${materialChip(s.materialType)}</td>
+      <td>${formatDate(s.submittedAt)}</td>
+      <td>${statusBadge(s.status)}</td>
+      <td>
+        <button class="btn-view" onclick="openModal('${esc(s.id)}')"
+          aria-label="View submission from ${esc(s.respondentName)}">
+          View Submission
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+
+/* ================================================================
+   5. MODAL – open, build detail HTML, close
+   ================================================================ */
+function openModal(id) {
+  const s = SUBMISSIONS.find(sub => sub.id === id);
+  if (!s) return;
+
+  currentSubmissionId = id;
+
+  // Update URL query param so the link is shareable (no page reload)
+  const url = new URL(window.location.href);
+  url.searchParams.set('id', id);
+  window.history.replaceState({}, '', url.toString());
+
+  // Header
+  document.getElementById('modal-title').textContent    = esc(s.respondentName);
+  document.getElementById('modal-subtitle').textContent =
+    `${s.department} – ${s.courseNumber} · ID: ${s.id} · Submitted ${formatDate(s.submittedAt)}`;
+
+  // Pre-fill review controls
+  document.getElementById('review-status').value = s.status;
+  document.getElementById('review-notes').value  = s.adminNotes || '';
+  document.getElementById('save-feedback').classList.remove('show');
+
+  // Build detail body
+  document.getElementById('modal-body').innerHTML = buildDetailHTML(s);
+
+  // Open overlay
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Focus the modal for accessibility
+  document.getElementById('modal').focus();
+}
+
+/* buildDetailHTML(s)
+   Constructs the inner HTML for the modal body.
+   Only renders a detail row if the field has a real value –
+   null / undefined / empty string fields are skipped. */
+function buildDetailHTML(s) {
+  /* Helper: single row */
+  function row(label, value, isLink) {
+    if (value === null || value === undefined || String(value).trim() === '') return '';
+    const display = isLink
+      ? `<a href="${esc(value)}" target="_blank" rel="noopener noreferrer" class="detail-link">${esc(value)}</a>`
+      : `<span>${esc(String(value))}</span>`;
+    return `<div class="detail-row">
+              <div class="detail-label">${label}</div>
+              <div class="detail-value">${display}</div>
+            </div>`;
+  }
+
+  /* Helper: ranking list */
+  function rankRow(label, items) {
+    if (!items || !items.length) return '';
+    const listItems = items.map((item, i) =>
+      `<li><span class="rank-num-badge">${i + 1}</span>${esc(item)}</li>`
+    ).join('');
+    return `<div class="detail-row">
+              <div class="detail-label">${label}</div>
+              <div class="detail-value"><ul class="rank-display">${listItems}</ul></div>
+            </div>`;
+  }
+
+  /* Helper: section block */
+  function section(title, rows) {
+    const content = rows.filter(Boolean).join('');
+    if (!content) return '';
+    return `<div class="detail-section">
+              <div class="detail-section-title">${title}</div>
+              ${content}
+            </div>`;
+  }
+
+  return [
+    section('Respondent Information', [
+      row('Name', s.respondentName)
+    ]),
+
+    section('Course Information', [
+      row('Department',    s.department),
+      row('Course Number', s.courseNumber),
+      row('CRN(s)',        s.crn)
+    ]),
+
+    section('Resource & Material Information', [
+      row('Material Type',                    s.materialType),
+      row('Low-Cost Material Title',          s.ltcMaterial),
+      row('ZTC Resource Type',                s.ztcType),
+      row('OER Title',                        s.oerTitle),
+      row('OER URL',                          s.oerUrl, /* isLink= */ true),
+      row('Non-OER Resource Description',     s.nonOerResource),
+      row('Subsidized Resource Description',  s.subsidizedResource),
+      row('No-Material Explanation',          s.noMaterialExplain)
+    ]),
+
+    section('OER Interest & Assistance', [
+      row('Interested in Learning More?', s.oerInterest),
+      rankRow('Learning Topics (Ranked)', s.oerRanking)
+    ]),
+
+    section('Additional Information', [
+      row('Did you know you\'re awesome?', s.awesome),
+      row('Questions / Comments',         s.comments),
+      row('Submitted At',                 formatDateLong(s.submittedAt)),
+      row('Submission ID',                s.id)
+    ])
+  ].join('');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  currentSubmissionId = null;
+
+  // Remove ?id= from the URL
+  const url = new URL(window.location.href);
+  url.searchParams.delete('id');
+  window.history.replaceState({}, '', url.toString());
+}
+
+
+/* ================================================================
+   6. REVIEW – save status + notes to localStorage
+   ================================================================ */
+function saveReview() {
+  if (!currentSubmissionId) return;
+
+  const idx = SUBMISSIONS.findIndex(s => s.id === currentSubmissionId);
+  if (idx === -1) return;
+
+  // Update in-memory copy
+  SUBMISSIONS[idx].status     = document.getElementById('review-status').value;
+  SUBMISSIONS[idx].adminNotes = document.getElementById('review-notes').value;
+  SUBMISSIONS[idx].updatedAt  = new Date().toISOString(); // track last edit
+
+  // Persist the entire array back to localStorage
+  if (!saveToStorage(SUBMISSIONS)) return; // saveToStorage shows its own alert on error
+
+  // Visual feedback
+  const fb = document.getElementById('save-feedback');
+  fb.classList.add('show');
+  setTimeout(() => fb.classList.remove('show'), 2500);
+
+  // Refresh stats and table without closing the modal
+  updateStats();
+  applyFilters();
+
+  console.log('%c✅ Review saved to localStorage', 'color:#16a34a;font-weight:bold');
+  console.log(SUBMISSIONS[idx]);
+}
+
+
+/* ================================================================
+   6b. DELETE FUNCTIONS
+   ================================================================ */
+
+/* deleteSubmission()
+   Removes the currently open submission from localStorage after
+   a browser confirmation. Closes the modal and refreshes. */
+function deleteSubmission() {
+  if (!currentSubmissionId) return;
+
+  const sub = SUBMISSIONS.find(s => s.id === currentSubmissionId);
+  if (!sub) return;
+
+  const name   = sub.respondentName || 'this submission';
+  const course = sub.courseNumber   || '';
+  if (!confirm(
+    `Delete submission from ${name} (${course})?\n\nThis cannot be undone.`
+  )) return;
+
+  // Remove from in-memory array
+  SUBMISSIONS = SUBMISSIONS.filter(s => s.id !== currentSubmissionId);
+
+  // Persist
+  if (!saveToStorage(SUBMISSIONS)) {
+    // Rollback: re-read from storage so UI stays consistent
+    SUBMISSIONS = loadFromStorage();
+    return;
+  }
+
+  closeModal();
+  updateStats();
+  applyFilters();
+
+  console.log('%c🗑 Submission deleted:', 'color:#dc2626;font-weight:bold', sub.id);
+}
+
+/* deleteAllSubmissions()
+   Wipes the entire localStorage key after a two-step confirmation. */
+function deleteAllSubmissions() {
+  if (SUBMISSIONS.length === 0) {
+    alert('There are no submissions to delete.');
+    return;
+  }
+  const count = SUBMISSIONS.length;
+  // Two-step confirmation for a destructive action
+  if (!confirm(
+    `⚠ Delete ALL ${count} submission${count !== 1 ? 's' : ''}?\n\n` +
+    'This will permanently remove every record from this browser. This cannot be undone.'
+  )) return;
+  if (!confirm('Final confirmation: permanently delete all local survey submissions?')) return;
+
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch (err) {
+    alert('Could not delete records: ' + err.message);
+    return;
+  }
+
+  SUBMISSIONS = [];
+  updateStats();
+  applyFilters();
+
+  console.log('%c🗑 All submissions deleted from localStorage', 'color:#dc2626;font-weight:bold');
+}
+
+
+/* ================================================================
+   7. FILTERS
+   ================================================================ */
+function clearFilters() {
+  ['f-name','f-course','f-crn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['f-material','f-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f-sort').value = 'newest';
+  applyFilters();
+}
+
+
+/* ================================================================
+   8. UTILITIES
+   ================================================================ */
+
+/* Escape HTML special characters to prevent XSS */
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* Short date for the table: Aug 20, 2025 */
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric'
+  });
+}
+
+/* Long date for the modal: August 20, 2025, 2:30 PM */
+function formatDateLong(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit'
+  });
+}
+
+/* Status badge HTML */
+function statusBadge(status) {
+  const map = {
+    'Pending':          'badge-pending',
+    'Under Review':     'badge-under-review',
+    'Approved':         'badge-approved',
+    'Needs Correction': 'badge-needs-correction'
+  };
+  const cls = map[status] || 'badge-pending';
+  return `<span class="badge ${cls}">${esc(status)}</span>`;
+}
+
+/* Material type chip HTML */
+function materialChip(type) {
+  const map = {
+    'Low-Cost Material (LTC)':   ['chip-ltc',  'LTC'],
+    'Zero-Cost Material (ZTC)':  ['chip-ztc',  'ZTC'],
+    'College-subsidized material':['chip-sub', 'Subsidized'],
+    'No instructional material': ['chip-none', 'None']
+  };
+  const [cls, label] = map[type] || ['chip-none', esc(type)];
+  return `<span class="chip ${cls}">${label}</span>`;
+}
+
+/* Shorthand: read input value */
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+/* Shorthand: set element text */
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+
+/* ================================================================
+   9. INIT
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Initial load from localStorage
+  SUBMISSIONS = loadFromStorage();
+  updateStats();
+  applyFilters();
+
+  // Close modal when clicking the dark backdrop
+  document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // Close modal with Escape key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  /* ── LIVE SYNC: BroadcastChannel (same-origin, multi-tab)
+     When the survey page saves a new submission it posts:
+       { type: 'submission-created', submissionId: '...' }
+     The admin page receives this and silently refreshes.
+     BroadcastChannel fires even when the storage event does not
+     (e.g., same-tab writes in some browsers). ── */
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannel('oer-survey-updates');
+      bc.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'submission-created') {
+          console.log('OER Admin: received broadcast, refreshing…', event.data.submissionId);
+          refreshFromStorage();
+        }
+      });
+    }
+  } catch (_) { /* BroadcastChannel not available — storage event fallback below */ }
+
+  /* ── LIVE SYNC: storage event (cross-tab, older browsers)
+     Fires when another tab changes the same localStorage key.
+     Note: does NOT fire for writes made in the current tab. ── */
+  window.addEventListener('storage', (event) => {
+    if (event.key === LS_KEY) {
+      console.log('OER Admin: storage event detected, refreshing…');
+      refreshFromStorage();
+    }
+  });
+
+  /* ── URL deep-link: admin.html?id=oer-123456
+     Reads the ?id= query param on page load.
+     Opens the matching submission's detail modal automatically.
+     Shows a friendly error if the ID is not found; never crashes. ── */
+  const params     = new URLSearchParams(window.location.search);
+  const deepLinkId = params.get('id');
+  if (deepLinkId) {
+    const match = SUBMISSIONS.find(s => s.id === deepLinkId);
+    if (match) {
+      openModal(deepLinkId);
+    } else {
+      // Friendly error — the ID may have been deleted or not yet saved
+      const errEl = document.getElementById('deeplink-error');
+      if (errEl) {
+        errEl.textContent =
+          `⚠ No submission found with ID "${deepLinkId}". ` +
+          'It may have been deleted, or the survey response has not been submitted yet.';
+        errEl.classList.add('show');
+        // Auto-hide after 8 seconds
+        setTimeout(() => errEl.classList.remove('show'), 8000);
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Open Educational Resources (OER) Survey - Fall, 2025</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f4f4;
+      color: #222;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #7F182E;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 72px;
+      position: relative;
+    }
+    .header-title {
+      color: #fff;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .header-badge {
+      background: #E9C451;
+      color: #7F182E;
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 6px 14px;
+      clip-path: polygon(8% 0%, 100% 0%, 92% 100%, 0% 100%);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── Gold accent bar ── */
+    .accent-bar {
+      height: 6px;
+      background: #E9C451;
+    }
+
+    /* ── Page wrapper ── */
+    .page {
+      max-width: 780px;
+      margin: 2.5rem auto 4rem;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.10);
+      overflow: hidden;
+    }
+
+    /* ── Hero block ── */
+    .hero {
+      background: #7F182E;
+      padding: 2rem 2.5rem 1.6rem;
+      position: relative;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -18px; right: 2.5rem;
+      width: 0; height: 0;
+      border-left: 22px solid transparent;
+      border-right: 22px solid transparent;
+      border-top: 20px solid #E9C451;
+    }
+    .hero h1 {
+      color: #fff;
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .hero p {
+      color: #f5d9df;
+      margin-top: 0.75rem;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      max-width: 640px;
+    }
+    .hero p strong { color: #E9C451; }
+
+    /* ── Form body ── */
+    .form-body { padding: 2.5rem 2.5rem 2rem; }
+
+    .required-note {
+      font-size: 0.82rem;
+      color: #7F182E;
+      margin-bottom: 1.4rem;
+    }
+
+    /* ── Name row ── */
+    .name-field {
+      margin-bottom: 1.8rem;
+    }
+    .name-field label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #7F182E;
+      margin-bottom: 4px;
+    }
+    .name-field input {
+      width: 100%;
+      max-width: 360px;
+      border: none;
+      border-bottom: 2px solid #7F182E;
+      padding: 7px 4px;
+      font-size: 0.97rem;
+      outline: none;
+      background: transparent;
+    }
+    .name-field input:focus { border-bottom-color: #E9C451; }
+
+    /* ── Section headers ── */
+    .section-header {
+      background: #7F182E;
+      color: #fff;
+      padding: 0.65rem 1.1rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 2rem -2.5rem 1.6rem;
+      border-left: 6px solid #E9C451;
+    }
+    .section-desc {
+      font-size: 0.88rem;
+      color: #555;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    /* ── Question blocks ── */
+    .question {
+      margin-bottom: 1.8rem;
+    }
+    .question-label {
+      font-size: 0.97rem;
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 0.35rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .question-label .q-num {
+      color: #7F182E;
+      font-weight: 800;
+      min-width: 1.6rem;
+    }
+    .question-label .req { color: #7F182E; }
+    .question-hint {
+      font-size: 0.82rem;
+      color: #666;
+      margin-bottom: 0.55rem;
+      margin-left: 2.1rem;
+      line-height: 1.45;
+    }
+
+    /* ── Inputs ── */
+    input[type="text"],
+    input[type="url"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: #222;
+      background: #fafafa;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus,
+    input[type="url"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #7F182E;
+      background: #fff;
+    }
+    textarea { resize: vertical; min-height: 88px; }
+    select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%237F182E' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+
+    /* ── Radio / Checkbox ── */
+    .options { display: flex; flex-direction: column; gap: 0.55rem; margin-left: 2.1rem; }
+    .option-item {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .option-item input[type="radio"],
+    .option-item input[type="checkbox"] {
+      width: 18px; height: 18px;
+      accent-color: #7F182E;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Ranking list ── */
+    .rank-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-left: 2.1rem;
+    }
+    .rank-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #fafafa;
+      border: 1.5px solid #ddd;
+      border-radius: 4px;
+      padding: 9px 14px;
+      font-size: 0.95rem;
+      cursor: grab;
+      user-select: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .rank-item:hover { border-color: #7F182E; background: #fff8f9; }
+    .rank-item.dragging { opacity: 0.5; border-color: #E9C451; }
+    .rank-handle {
+      color: #E9C451;
+      font-size: 1.1rem;
+      font-weight: 900;
+      cursor: grab;
+    }
+    .rank-num {
+      font-weight: 700;
+      color: #7F182E;
+      min-width: 1.2rem;
+    }
+
+    /* ── Submit button ── */
+    .submit-row {
+      margin-top: 2.2rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .btn-submit {
+      background: #7F182E;
+      color: #fff;
+      border: none;
+      padding: 11px 38px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn-submit:hover { background: #5e1122; transform: translateY(-1px); }
+    .btn-submit:active { transform: translateY(0); }
+
+    /* ── Footer ── */
+    .form-footer {
+      background: #7F182E;
+      color: #f5d9df;
+      text-align: center;
+      font-size: 0.78rem;
+      padding: 0.85rem 1rem;
+    }
+    .form-footer a { color: #E9C451; text-decoration: none; }
+
+    /* ── Divider ── */
+    .divider { border: none; border-top: 1.5px solid #eee; margin: 0.5rem 0 1.5rem; }
+
+    @media (max-width: 600px) {
+      .form-body { padding: 1.5rem 1.1rem; }
+      .section-header { margin-left: -1.1rem; margin-right: -1.1rem; }
+      .hero { padding: 1.5rem 1.1rem 1.4rem; }
+      .hero h1 { font-size: 1.35rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ PAGE HEADER ══ -->
+<header class="header" role="banner">
+  <span class="header-title">Open Educational Resources</span>
+  <span class="header-badge">Fall 2025</span>
+</header>
+<div class="accent-bar"></div>
+
+<main class="page" role="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Open Educational Resources (OER) Survey</h1>
+    <p>Are you using OER or affordable instructional material in your course(s)? Does that qualify your course to be Zero Textbook Cost (ZTC) or Low Textbook Cost (LTC)?
+    Fill out this form and let us know! <strong>This is for FA25 courses.</strong></p>
+  </div>
+
+  <!-- Form -->
+  <div class="form-body">
+    <p class="required-note">* Required</p>
+
+    <!-- Respondent name -->
+    <div class="name-field">
+      <label for="respondent-name">* This form will record your name, please fill your name.</label>
+      <input type="text" id="respondent-name" name="respondent_name" placeholder="Your full name" required aria-required="true" />
+    </div>
+
+    <!-- ══ SECTION 1: Course Information ══ -->
+    <div class="section-header" role="heading" aria-level="2">Course Information</div>
+    <p class="section-desc">This form is intended to apply to <strong>a single course you instruct</strong>. If you are teaching multiple courses with the same resources, please record another response. Responses are linked to your email &amp; CWID.</p>
+
+    <!-- Q1 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">1.</span> Department <span class="req">*</span></div>
+      <select id="q1" name="department" required aria-required="true" aria-label="Department">
+        <option value="" disabled selected>Select your answer</option>
+        <option>Accounting</option>
+        <option>Administration of Justice</option>
+        <option>Anthropology</option>
+        <option>Art</option>
+        <option>Biology</option>
+        <option>Business</option>
+        <option>Chemistry</option>
+        <option>Communication Studies</option>
+        <option>Computer Science</option>
+        <option>Counseling</option>
+        <option>Dance</option>
+        <option>Economics</option>
+        <option>Education</option>
+        <option>Engineering</option>
+        <option>English</option>
+        <option>Environmental Science</option>
+        <option>Film Studies</option>
+        <option>Geography</option>
+        <option>History</option>
+        <option>Kinesiology</option>
+        <option>Library</option>
+        <option>Mathematics</option>
+        <option>Music</option>
+        <option>Nursing / Allied Health</option>
+        <option>Philosophy</option>
+        <option>Physics</option>
+        <option>Political Science</option>
+        <option>Psychology</option>
+        <option>Sociology</option>
+        <option>Spanish</option>
+        <option>Theatre Arts</option>
+        <option>Other</option>
+      </select>
+    </div>
+
+    <!-- Q2 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">2.</span> What is the course number? <span class="req">*</span></div>
+      <input type="text" id="q2" name="course_number" placeholder="e.g. ENG 101" required aria-required="true" />
+    </div>
+
+    <!-- Q3 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">3.</span> What is the CRN? <span class="req">*</span></div>
+      <p class="question-hint">If there are multiple sections this quarter, enter each CRN on a new line in your answer. (Hit enter/return)</p>
+      <textarea id="q3" name="crn" rows="3" placeholder="Enter CRN(s), one per line" required aria-required="true"></textarea>
+    </div>
+
+    <!-- ══ SECTION 2: Resource & Material Information ══ -->
+    <div class="section-header" role="heading" aria-level="2">Resource &amp; Material Information</div>
+    <p class="section-desc">Do your students pay less than $50 for your textbook/instructional material? Do they pay $0?</p>
+
+    <!-- Q4 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">4.</span> Does your course use low-cost material or no-cost material? <span class="req">*</span></div>
+      <p class="question-hint">Low cost is considered to be &lt;$50. Zero cost can be OER or non-OER digital material. Other scenarios include if your department pays for guaranteed access to a text at no cost to students.</p>
+      <div class="options" role="radiogroup" aria-label="Material cost type">
+        <label class="option-item"><input type="radio" name="cost_type" value="ltc" required /> Low-Cost Material (LTC)</label>
+        <label class="option-item"><input type="radio" name="cost_type" value="ztc" /> Zero-Cost Material (ZTC)</label>
+        <label class="option-item"><input type="radio" name="cost_type" value="subsidized" /> College-subsidized material</label>
+        <label class="option-item"><input type="radio" name="cost_type" value="none" /> No instructional material</label>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">5.</span> What is the textbook or material you use that is &lt;$50? <span class="req">*</span></div>
+      <p class="question-hint">Please provide the title of the textbook or material.</p>
+      <input type="text" id="q5" name="material_title" placeholder="Title of textbook or material" required aria-required="true" />
+    </div>
+
+    <!-- Q6 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">6.</span> Is your textbook or material considered an Open Educational Resource (OER) or is it non-OER digital material? <span class="req">*</span></div>
+      <p class="question-hint">Non-OER digital material can include but are not restricted to Canvas instructional resources (custom-made lectures) &amp; college-provided resources (such as library databases, eBooks through Libby, or library-provided access to The New York Times).</p>
+      <div class="options" role="radiogroup" aria-label="OER or non-OER">
+        <label class="option-item"><input type="radio" name="oer_type" value="oer" required /> Open Educational Resource (OER)</label>
+        <label class="option-item"><input type="radio" name="oer_type" value="non_oer_digital" /> Non-OER digital material (free online material)</label>
+        <label class="option-item"><input type="radio" name="oer_type" value="non_oer_print" /> Non-OER print material (library physical copy)</label>
+      </div>
+    </div>
+
+    <!-- ══ SECTION 3: OER Material Information ══ -->
+    <div class="section-header" role="heading" aria-level="2">OER Material Information</div>
+    <p class="section-desc">What is the resource? This includes Pressbooks, LibreTexts, OpenStax, OTL, UML, and more. This does <em>not</em> include PDFs of textbooks from publishers, Google Books samples, self-hosted resources on a private Google Drive, etc.</p>
+
+    <!-- Q7 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">7.</span> Title of OER <span class="req">*</span></div>
+      <input type="text" id="q7" name="oer_title" placeholder="Enter the title of the OER" required aria-required="true" />
+    </div>
+
+    <!-- Q8 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">8.</span> URL to OER <span class="req">*</span></div>
+      <input type="url" id="q8" name="oer_url" placeholder="https://..." required aria-required="true" />
+    </div>
+
+    <!-- ══ SECTION 4: No-Cost Digital Resources ══ -->
+    <div class="section-header" role="heading" aria-level="2">No-Cost Digital Resources</div>
+
+    <!-- Q9 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">9.</span> What is the resource you use for your instruction? <span class="req">*</span></div>
+      <p class="question-hint">If possible, please provide a link to the resource or explain what the resource is.<br/>If it is multiple resources from multiple sources, please explain.</p>
+      <textarea id="q9" name="no_cost_resource" rows="4" placeholder="Describe the resource(s) and/or provide links" required aria-required="true"></textarea>
+    </div>
+
+    <!-- ══ SECTION 5: Subsidized Resources ══ -->
+    <div class="section-header" role="heading" aria-level="2">Subsidized Resources</div>
+
+    <!-- Q10 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">10.</span> Is the resource a textbook or service normally at-cost to the student? <span class="req">*</span></div>
+      <p class="question-hint">If so, please describe your resource and how it is subsidized by the college. This can include guaranteed access through the library via the Course Reserves Program or other avenues of access. If not, please explain.</p>
+      <textarea id="q10" name="subsidized_desc" rows="4" placeholder="Describe the subsidized resource and how access is provided" required aria-required="true"></textarea>
+    </div>
+
+    <!-- ══ SECTION 6: No Instructional Material ══ -->
+    <div class="section-header" role="heading" aria-level="2">No Instructional Material</div>
+
+    <!-- Q11 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">11.</span> Please explain. Normally, courses are required to have some sort of instructional material. <span class="req">*</span></div>
+      <textarea id="q11" name="no_material_explanation" rows="4" placeholder="Please provide your explanation here" required aria-required="true"></textarea>
+    </div>
+
+    <!-- ══ SECTION 7: OER Interest & Assistance ══ -->
+    <div class="section-header" role="heading" aria-level="2">OER Interest &amp; Assistance</div>
+    <p class="section-desc">Professional development opportunities and workshops are available given demand &amp; interest.</p>
+
+    <!-- Q12 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">12.</span> Are you interested in learning more about OER?</div>
+      <p class="question-hint">This can include where to find resources, what resources are available, and how to use OER.</p>
+      <div class="options" role="radiogroup" aria-label="Interest in OER">
+        <label class="option-item"><input type="radio" name="oer_interest" value="not_interested" /> I'm not interested.</label>
+        <label class="option-item"><input type="radio" name="oer_interest" value="interested" /> I'm interested in learning more!</label>
+      </div>
+    </div>
+
+    <!-- Q13 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">13.</span> What are you interested in learning about? Please rank the following choices.</div>
+      <p class="question-hint">Drag to reorder — rank from most interested (top) to least interested (bottom).</p>
+      <ul class="rank-list" id="rankList" aria-label="Rank your learning interests">
+        <li class="rank-item" draggable="true" data-value="finding"><span class="rank-handle" aria-hidden="true">⠿</span><span class="rank-num">1</span> Finding OER material</li>
+        <li class="rank-item" draggable="true" data-value="creative_commons"><span class="rank-handle" aria-hidden="true">⠿</span><span class="rank-num">2</span> Creative Commons &amp; copyright</li>
+        <li class="rank-item" draggable="true" data-value="remixing"><span class="rank-handle" aria-hidden="true">⠿</span><span class="rank-num">3</span> Remixing OER material</li>
+        <li class="rank-item" draggable="true" data-value="using_general"><span class="rank-handle" aria-hidden="true">⠿</span><span class="rank-num">4</span> Using OER in general</li>
+      </ul>
+      <!-- Hidden inputs updated by JS -->
+      <input type="hidden" name="rank_1" id="rank_1" />
+      <input type="hidden" name="rank_2" id="rank_2" />
+      <input type="hidden" name="rank_3" id="rank_3" />
+      <input type="hidden" name="rank_4" id="rank_4" />
+    </div>
+
+    <!-- Q14 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">14.</span> Did you know you're awesome?</div>
+      <p class="question-hint">A lighthearted question. We're all doing great work here.</p>
+      <div class="options" role="radiogroup" aria-label="Are you awesome?">
+        <label class="option-item"><input type="radio" name="awesome" value="yes" /> Yes, I am awesome.</label>
+        <label class="option-item"><input type="radio" name="awesome" value="very" /> No — I'm <em>very</em> awesome.</label>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Q15 -->
+    <div class="question">
+      <div class="question-label"><span class="q-num">15.</span> Questions? Comments?</div>
+      <p class="question-hint">Have something that does not fit anywhere else? Feedback on how the form is formatted? Other comments?</p>
+      <textarea id="q15" name="comments" rows="4" placeholder="Your questions or comments here..."></textarea>
+    </div>
+
+    <!-- Submit -->
+    <div class="submit-row">
+      <button type="submit" class="btn-submit">Submit</button>
+    </div>
+
+  </div><!-- /form-body -->
+</main>
+
+<footer class="form-footer" role="contentinfo">
+  This form is for FA25 courses only. Responses are linked to your email &amp; CWID. &nbsp;|&nbsp; <a href="#">Privacy Notice</a>
+</footer>
+
+<script>
+  /* ── Drag-to-rank ── */
+  (function () {
+    const list = document.getElementById('rankList');
+    if (!list) return;
+    let dragged = null;
+
+    function updateNumbers() {
+      list.querySelectorAll('.rank-item').forEach((item, i) => {
+        item.querySelector('.rank-num').textContent = i + 1;
+        const hidden = document.getElementById('rank_' + (i + 1));
+        if (hidden) hidden.value = item.dataset.value;
+      });
+    }
+    updateNumbers();
+
+    list.addEventListener('dragstart', e => {
+      dragged = e.target.closest('.rank-item');
+      if (dragged) dragged.classList.add('dragging');
+    });
+    list.addEventListener('dragend', () => {
+      if (dragged) dragged.classList.remove('dragging');
+      dragged = null;
+      updateNumbers();
+    });
+    list.addEventListener('dragover', e => {
+      e.preventDefault();
+      const target = e.target.closest('.rank-item');
+      if (target && target !== dragged) {
+        const rect = target.getBoundingClientRect();
+        const after = e.clientY > rect.top + rect.height / 2;
+        list.insertBefore(dragged, after ? target.nextSibling : target);
+      }
+    });
+
+    /* Touch support */
+    let touchItem = null, clone = null;
+    list.addEventListener('touchstart', e => {
+      touchItem = e.target.closest('.rank-item');
+      if (!touchItem) return;
+      touchItem.classList.add('dragging');
+    }, { passive: true });
+    list.addEventListener('touchmove', e => {
+      if (!touchItem) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      const target = el && el.closest('.rank-item');
+      if (target && target !== touchItem) {
+        const rect = target.getBoundingClientRect();
+        const after = touch.clientY > rect.top + rect.height / 2;
+        list.insertBefore(touchItem, after ? target.nextSibling : target);
+      }
+    }, { passive: false });
+    list.addEventListener('touchend', () => {
+      if (touchItem) touchItem.classList.remove('dragging');
+      touchItem = null;
+      updateNumbers();
+    });
+  })();
+</script>
+</body>
+</html>
