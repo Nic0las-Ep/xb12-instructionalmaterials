@@ -75,18 +75,30 @@ def handler(event, context):
     price = _to_decimal(body.get("price"))
     cost_type = (body.get("costType") or "").strip().lower()
 
+    # Detect OER sources (OpenStax, LibreTexts, Pressbooks, ...). These are
+    # no-cost OER, so they classify as XB12 code E regardless of any mistaken
+    # cost marking on the way in.
+    oer_source = xb12.is_oer_source(
+        title, body.get("author"), body.get("publisher"), url
+    )
+    if oer_source:
+        cost_type = "oer"
+
     # Classify this resource on its own (per-resource XB12 code for the catalog).
     material = {
         "costType": cost_type,
         "price": price,
-        "isOER": bool(body.get("isOER")) or cost_type == "oer",
+        "isOER": bool(body.get("isOER")) or cost_type == "oer" or oer_source,
         "url": url,
         "isbn": isbn,
     }
     code, explanation = xb12.classify([material], LOW_COST_THRESHOLD)
     ztc_ltc = xb12.zero_low_cost_marking(code)
     # Friendly cost-status label kept alongside the official XB12 letter code.
-    cost_status = ztc_ltc or ("NONE" if code == "A" else "STANDARD")
+    if oer_source:
+        cost_status = "ZTC-OER"
+    else:
+        cost_status = ztc_ltc or ("NONE" if code == "A" else "STANDARD")
 
     resource_id = str(uuid.uuid4())
     now = datetime.datetime.utcnow().isoformat() + "Z"

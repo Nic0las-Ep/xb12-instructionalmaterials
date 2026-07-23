@@ -73,6 +73,18 @@
     WMST: "Women's Studies",
   };
 
+  // OER publisher/source markers - mirrors the backend so the form can
+  // preselect the OER cost type for OpenStax/LibreTexts/etc.
+  const OER_MARKERS = [
+    'openstax', 'libretext', 'pressbooks', 'oercommons', 'oer commons',
+    'open education', 'open textbook', 'opentextbook', 'creative commons',
+    'merlot', 'saylor', 'open.umn.edu',
+  ];
+  function looksLikeOER() {
+    const hay = Array.prototype.slice.call(arguments).filter(Boolean).join(' ').toLowerCase();
+    return OER_MARKERS.some((m) => hay.includes(m));
+  }
+
   function subjectFromCourse() {
     if (!currentCourse) return '';
     const prefix = (currentCourse.coursePrefix || '').toUpperCase();
@@ -354,15 +366,23 @@
       const bibMissing = missing.filter((f) => f !== 'price');
       const priceMissing = missing.includes('price');
 
+      // OpenStax/LibreTexts/etc. are free OER -> preselect the OER cost type
+      // and don't treat the missing price as something to fill in.
+      const oer = looksLikeOER(m.title, m.author, m.publisher);
+      if (oer) {
+        $('res-cost-type').value = 'oer';
+        onCostTypeChange();
+      }
+
       markMissing('fg-title', bibMissing.includes('title'));
       markMissing('fg-author', bibMissing.includes('author'));
       markMissing('fg-publisher', bibMissing.includes('publisher'));
-      markMissing('fg-price', priceMissing);
+      markMissing('fg-price', priceMissing && !oer);
 
       // Price is rarely available from the free registries, so fall back to
-      // manual entry: default a textbook to "priced" and flag the price field
-      // as required so it's obvious the user needs to type it in.
-      if (priceMissing && m.price == null && currentNewType() === 'textbook') {
+      // manual entry: default a (non-OER) textbook to "priced" and flag the
+      // price field as required so it's obvious the user needs to type it in.
+      if (priceMissing && m.price == null && currentNewType() === 'textbook' && !oer) {
         $('res-cost-type').value = 'priced';
         onCostTypeChange();
       }
@@ -379,10 +399,13 @@
         if (bibMissing.length) {
           parts.push(`complete the highlighted field(s): <strong>${esc(bibMissing.join(', '))}</strong>`);
         }
-        if (priceMissing) {
+        if (priceMissing && !oer) {
           parts.push(
             'enter the <strong>price</strong> manually (or change the cost type if the material is free/OER)'
           );
+        }
+        if (oer) {
+          parts.push('recognized as a free <strong>OER</strong> source (no price needed)');
         }
         if (parts.length) {
           setStatus('isbn-status', 'warn', `Found title &amp; author via ${src}. Please ${parts.join(' and ')}.`);

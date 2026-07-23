@@ -179,6 +179,38 @@ MARKING_TO_CODE = {
 }
 
 
+# Known Open Educational Resource publishers / repositories. A resource whose
+# title, publisher, author, or URL matches one of these is treated as no-cost
+# OER (XB12 code E), per the OER knowledge-source strategy (OpenStax,
+# LibreTexts, Pressbooks, etc.).
+OER_MARKERS = (
+    "openstax",
+    "libretext",           # matches "libretext" and "libretexts"
+    "pressbooks",
+    "oercommons",
+    "oer commons",
+    "open education",
+    "open educational resource",
+    "open textbook",
+    "opentextbook",
+    "creative commons",
+    "merlot",
+    "saylor",
+    "open.umn.edu",        # Open Textbook Library
+    "milne open textbooks",
+    "openstax.org",
+    "libretexts.org",
+)
+
+
+def is_oer_source(*parts):
+    """True if any of the given text fields indicates an OER publisher/source."""
+    haystack = " ".join(str(p) for p in parts if p).lower()
+    if not haystack.strip():
+        return False
+    return any(marker in haystack for marker in OER_MARKERS)
+
+
 def code_from_marking(marking):
     """Return the XB12 letter code for a friendly marking, or None if unknown."""
     if not marking:
