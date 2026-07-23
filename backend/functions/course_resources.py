@@ -18,6 +18,7 @@ GET /course-resources?coursePrefix=ENGL&courseNumber=1A[&quarter=Fall&year=2025]
 import datetime
 import os
 import uuid
+from decimal import Decimal, InvalidOperation
 
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -70,16 +71,28 @@ def _create(event):
             return bad_request("'year' must be a number.")
 
     for src_key, dst_key in (
+        ("crn", "CRN"),
+        ("section", "section"),
         ("professorFirstName", "professorFirstName"),
         ("professorLastName", "professorLastName"),
         ("resourceId", "resourceId"),
         ("title", "title"),
         ("xb12Code", "xb12Code"),
+        ("costStatus", "costStatus"),
+        ("costType", "costType"),
         ("materialType", "materialType"),
     ):
         val = body.get(src_key)
         if val:
             item[dst_key] = str(val).strip()
+
+    # Numeric price (kept for the section-level XB12 computation at submit time).
+    price = body.get("price")
+    if price not in (None, ""):
+        try:
+            item["price"] = Decimal(str(price))
+        except (InvalidOperation, ValueError, TypeError):
+            pass
 
     if isbn:
         item["ISBN"] = isbn

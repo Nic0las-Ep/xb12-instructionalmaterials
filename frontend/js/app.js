@@ -169,6 +169,8 @@
     currentCourse = {
       coursePrefix: prefix,
       courseNumber: number,
+      crn: $('crn').value.trim(),
+      section: $('section').value.trim(),
       quarter: $('quarter').value.trim(),
       year: $('year').value.trim(),
       professorFirstName: $('prof-first').value.trim(),
@@ -176,8 +178,10 @@
     };
 
     const term = [currentCourse.quarter, currentCourse.year].filter(Boolean).join(' ');
+    const sectionLabel = currentCourse.section ? ` §${currentCourse.section}` : '';
+    const crnLabel = currentCourse.crn ? ` · CRN ${currentCourse.crn}` : '';
     $('adopted-course-label').textContent =
-      `${prefix} ${number}${term ? ' · ' + term : ''}`;
+      `${prefix} ${number}${sectionLabel}${term ? ' · ' + term : ''}${crnLabel}`;
 
     unlockCourseSteps();
     prefillSubject(true); // seed the add-new subject from the course
