@@ -273,30 +273,44 @@
       }
 
       const missing = res.missingFields || [];
-      markMissing('fg-title', missing.includes('title'));
-      markMissing('fg-author', missing.includes('author'));
-      markMissing('fg-publisher', missing.includes('publisher'));
+      const bibMissing = missing.filter((f) => f !== 'price');
+      const priceMissing = missing.includes('price');
+
+      markMissing('fg-title', bibMissing.includes('title'));
+      markMissing('fg-author', bibMissing.includes('author'));
+      markMissing('fg-publisher', bibMissing.includes('publisher'));
+      markMissing('fg-price', priceMissing);
+
+      // Price is rarely available from the free registries, so fall back to
+      // manual entry: default a textbook to "priced" and flag the price field
+      // as required so it's obvious the user needs to type it in.
+      if (priceMissing && m.price == null && currentNewType() === 'textbook') {
+        $('res-cost-type').value = 'priced';
+        onCostTypeChange();
+      }
 
       if (!res.found) {
         setStatus(
           'isbn-status',
           'warn',
-          'No registry match for that ISBN. Please fill in the details manually.'
-        );
-      } else if (missing.length) {
-        setStatus(
-          'isbn-status',
-          'warn',
-          `Found via ${esc((res.sources || []).join(', '))}. Please complete the highlighted field(s): <strong>${esc(
-            missing.join(', ')
-          )}</strong>.`
+          'No registry match for that ISBN. Please fill in the details manually, including the price.'
         );
       } else {
-        setStatus(
-          'isbn-status',
-          'success',
-          `Details found via ${esc((res.sources || []).join(', '))}. Review and save below.`
-        );
+        const src = esc((res.sources || []).join(', '));
+        const parts = [];
+        if (bibMissing.length) {
+          parts.push(`complete the highlighted field(s): <strong>${esc(bibMissing.join(', '))}</strong>`);
+        }
+        if (priceMissing) {
+          parts.push(
+            'enter the <strong>price</strong> manually (or change the cost type if the material is free/OER)'
+          );
+        }
+        if (parts.length) {
+          setStatus('isbn-status', 'warn', `Found title &amp; author via ${src}. Please ${parts.join(' and ')}.`);
+        } else {
+          setStatus('isbn-status', 'success', `Details found via ${src}. Review and save below.`);
+        }
       }
     } catch (e) {
       setStatus('isbn-status', 'error', 'Lookup failed: ' + esc(e.message));
@@ -396,7 +410,7 @@
         if ($(id)) $(id).value = '';
       }
     );
-    ['fg-title', 'fg-author', 'fg-publisher'].forEach((g) => markMissing(g, false));
+    ['fg-title', 'fg-author', 'fg-publisher', 'fg-price'].forEach((g) => markMissing(g, false));
     hide('isbn-status');
   }
 
