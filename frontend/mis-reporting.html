@@ -95,6 +95,10 @@
           <div class="v"><strong>XB</strong> — Section Data Records</div>
         </div>
         <div class="meta-item">
+          <div class="k">Reporting College</div>
+          <div class="v"><strong>De Anza College</strong> — GI03 441</div>
+        </div>
+        <div class="meta-item">
           <div class="k">Data Element</div>
           <div class="v"><strong>XB12</strong> — Instructional-Material-Cost · Format X (single character: A, C, D, E, F, G, Y)</div>
         </div>
@@ -109,8 +113,9 @@
       </div>
       <div class="file-note">
         Downloadable data file uses a fixed-width 80-column layout, one record per section:
-        <code>[1-2] XB · [3-5] college · [6-11] term · [12-16] CRN · [17-24] subject · [25-32] course · [33-38] section · [39] XB12 · [40-80] reference</code>,
-        with header (<code>HDR</code>) and trailer (<code>TRL</code>) records.
+        <code>[1-2] XB · [3-5] college (441) · [6-11] term (YYYYT) · [12-16] CRN · [17-24] subject · [25-32] course · [33-38] section · [39] XB12 · [40-80] reference</code>,
+        with header (<code>HDR</code>) and trailer (<code>TRL</code>) records. Term code follows the FHDA
+        quarterly convention (year + quarter digit: 1 Summer, 2 Fall, 3 Winter, 4 Spring).
       </div>
     </section>
 
@@ -167,6 +172,10 @@
         courseNumber: p.courseNumber || '',
         section: p.section || '',
         crn: p.crn || '',
+        quarter: p.quarter || '',
+        year: p.year != null ? String(p.year) : '',
+        term: p.term || '',
+        termLabel: [p.quarter, p.year != null && p.year !== '' ? p.year : ''].filter(Boolean).join(' '),
         xb12Code: p.xb12Code || '',
         xb12Meaning: p.xb12Meaning || '',
         urls: Array.isArray(p.urls) ? p.urls : [],
@@ -211,6 +220,7 @@
           <td class="td-name">${esc(r.course) || '—'}</td>
           <td>${esc(r.section) || '—'}</td>
           <td>${esc(r.crn) || '—'}</td>
+          <td>${esc(r.termLabel) || '—'}</td>
           <td>${de}</td>
           <td>${links}</td>
           <td class="td-course">${esc(fmtDate(r.publishedAt))}</td>
@@ -228,6 +238,7 @@
                 <th>Course</th>
                 <th>Section</th>
                 <th>CRN</th>
+                <th>Term</th>
                 <th>XB12<span class="de-hint">DED# XB12 · Instructional-Material-Cost</span></th>
                 <th>Instructional Material Link(s)</th>
                 <th>Reported</th>
@@ -257,8 +268,8 @@
     function misDetailRecord(r) {
       return (
         padField('XB', 2) +                        // 1-2   record type
-        padField('000', 3) +                       // 3-5   college code (placeholder)
-        padField('', 6) +                          // 6-11  term (not captured)
+        padField('441', 3) +                       // 3-5   college code (De Anza GI03)
+        padField(r.term, 6) +                      // 6-11  term (YYYYT)
         padField(r.crn, 5, 'rzero') +              // 12-16 CRN
         padField(r.coursePrefix, 8) +              // 17-24 subject/prefix
         padField(r.courseNumber, 8) +              // 25-32 course number

@@ -71,6 +71,8 @@ def _submission(materials, status="Approved", **extra):
         "courseNumber": "1A",
         "section": "01",
         "crn": "12345",
+        "quarter": "Fall",
+        "year": 2025,
         "respondentName": "Prof. Ada Lovelace",
         "sectionXb12Code": "Y",
         "sectionXb12Meaning": "Section does not meet no-cost or low-cost criteria",
@@ -168,6 +170,19 @@ class CostCodeTests(unittest.TestCase):
         self.assertEqual(ps.cost_code_label(""), "")
 
 
+class TermCodeTests(unittest.TestCase):
+    def test_term_codes(self):
+        self.assertEqual(ps.mis_term_code("Fall", 2025), "20252")
+        self.assertEqual(ps.mis_term_code("Summer", "2026"), "20261")
+        self.assertEqual(ps.mis_term_code("Winter", 2026), "20263")
+        self.assertEqual(ps.mis_term_code("Spring", 2026), "20264")
+
+    def test_term_code_missing_parts(self):
+        self.assertEqual(ps.mis_term_code("", 2025), "")
+        self.assertEqual(ps.mis_term_code("Fall", ""), "")
+        self.assertEqual(ps.mis_term_code("Fall", "26"), "")  # not 4-digit
+
+
 class MaterialSnapshotTests(unittest.TestCase):
     def test_snapshot_captures_isbn_url_price(self):
         sub = _submission(
@@ -210,6 +225,7 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(row["section"], "01")
         self.assertEqual(row["professor"], "Prof. Ada Lovelace")
         self.assertEqual(row["costCode"], "Standard")
+        self.assertEqual(row["term"], "20252")  # Fall 2025
         self.assertEqual(row["urls"], ["https://x.edu/a"])
         self.assertEqual(row["materials"][0]["isbn"], "123")
         self.assertEqual(row["materials"][0]["price"], 50)

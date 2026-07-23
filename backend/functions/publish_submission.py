@@ -131,6 +131,20 @@ def cost_code_label(xb12_code):
     return _COST_CODE_LABEL.get((xb12_code or "").strip().upper(), "")
 
 
+# FHDA MIS quarterly-report term convention: YYYY + quarter digit
+# (1=Summer, 2=Fall, 3=Winter, 4=Spring), e.g. Fall 2025 -> "20252".
+_QUARTER_DIGIT = {"summer": "1", "fall": "2", "winter": "3", "spring": "4"}
+
+
+def mis_term_code(quarter, year):
+    """Return the FHDA-style term code (YYYYT) for a quarter/year, or ''."""
+    digit = _QUARTER_DIGIT.get((str(quarter or "").strip().lower()), "")
+    digits = "".join(ch for ch in str(year or "") if ch.isdigit())
+    if not digit or len(digits) != 4:
+        return ""
+    return f"{digits}{digit}"
+
+
 def _row_id(submission_id, destination):
     return f"{submission_id}#{destination}"
 
@@ -208,6 +222,9 @@ def publish(submission, destinations, published_by, table, now=None):
     section = submission.get("section") or ""
     crn = submission.get("crn") or submission.get("CRN") or ""
     professor = _professor_name(submission)
+    quarter = submission.get("quarter") or ""
+    year = submission.get("year") or ""
+    term = mis_term_code(quarter, year)
     # Section-level XB12 INSTRUCTIONAL-MATERIAL-COST code + friendly label.
     xb12_code = submission.get("sectionXb12Code") or ""
     xb12_meaning = submission.get("sectionXb12Meaning") or ""
@@ -227,6 +244,9 @@ def publish(submission, destinations, published_by, table, now=None):
             "section": section,
             "crn": crn,
             "professor": professor,
+            "quarter": quarter,
+            "year": year,
+            "term": term,
             "costCode": cost_code,
             "xb12Code": xb12_code,
             "xb12Meaning": xb12_meaning,

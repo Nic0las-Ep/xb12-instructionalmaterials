@@ -181,9 +181,14 @@ one publication, so no grouping is needed.
   detail record per section:
 
   ```
-  [1-2] XB  [3-5] college  [6-11] term  [12-16] CRN  [17-24] subject
-  [25-32] course  [33-38] section  [39] XB12  [40-80] reference
+  [1-2] XB  [3-5] college (441 De Anza, GI03)  [6-11] term (YYYYT)  [12-16] CRN
+  [17-24] subject  [25-32] course  [33-38] section  [39] XB12  [40-80] reference
   ```
+
+  The college code is De Anza's GI03 (**441**). The term follows FHDA's
+  quarterly-report convention `YYYY` + quarter digit (1 Summer, 2 Fall, 3
+  Winter, 4 Spring) — e.g. Fall 2026 → `20262` — derived from the submission's
+  quarter/year (collected on the professor form).
 
 All three mock pages use the app's shared design system (`css/styles.css`, De
 Anza burgundy/gold branding) so they match the survey and admin pages.
