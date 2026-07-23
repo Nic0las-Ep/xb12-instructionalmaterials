@@ -185,6 +185,10 @@
 
     unlockCourseSteps();
     prefillSubject(true); // seed the add-new subject from the course
+    // Seed the "use existing" class filter with this class (e.g. "ACCT 1A")
+    // so prior-section materials for the same class surface immediately.
+    const classEl = $('filter-class');
+    if (classEl) classEl.value = `${prefix} ${number}`;
     await refreshAdopted();
     $('step-adopted').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -305,6 +309,7 @@
     try {
       const res = await API.searchResources({
         q: $('search-q').value.trim(),
+        className: $('filter-class').value.trim(),
         xb12: $('filter-xb12').value,
         materialType: $('filter-type').value,
         subject: $('filter-subject').value.trim(),

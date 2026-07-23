@@ -55,6 +55,29 @@ def _partial_filter(field, raw):
     return {"wildcard": {field: {"value": f"*{value}*", "case_insensitive": True}}}
 
 
+def _class_filter(raw):
+    """
+    Match resources used in a given class (e.g. "ACCT 1A"). Class names are
+    stable across semesters (only CRN/section change), so this checks both the
+    resource's primary classNumber and its usedInCourses history (populated when
+    classes are submitted).
+    """
+    value = raw.strip()
+    if not value:
+        return None
+    lower = value.lower()
+    return {
+        "bool": {
+            "should": [
+                {"wildcard": {"classNumber": {"value": f"*{lower}*", "case_insensitive": True}}},
+                {"term": {"usedInCourses.keyword": value}},
+                {"match_phrase": {"usedInCourses": value}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+
 def handler(event, context):
     if http_method(event) == "OPTIONS":
         return respond(200, {})
@@ -71,12 +94,17 @@ def handler(event, context):
             clause = _terms_filter(field, raw)
             if clause:
                 filters.append(clause)
-    for field, param in (("subject", "subject"), ("classNumber", "classNumber")):
-        raw = params.get(param)
-        if raw:
-            clause = _partial_filter(field, raw)
-            if clause:
-                filters.append(clause)
+    subject_raw = params.get("subject")
+    if subject_raw:
+        clause = _partial_filter("subject", subject_raw)
+        if clause:
+            filters.append(clause)
+    # Class-name filter (e.g. "ACCT 1A") matches classNumber + usage history.
+    class_raw = params.get("classNumber") or params.get("className")
+    if class_raw:
+        clause = _class_filter(class_raw)
+        if clause:
+            filters.append(clause)
 
     client = AossClient()
 
