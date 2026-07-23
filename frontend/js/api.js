@@ -137,6 +137,31 @@ async function listCourseResources(q) {
   return _request('GET', '/course-resources', { query: q });
 }
 
+/**
+ * Finalize a class submission: computes the section-level XB12 code, records
+ * the submission, and writes usage back to the catalog.
+ * @param {object} course { coursePrefix, courseNumber, crn, section, quarter, year, professorFirstName, professorLastName }
+ * @returns {Promise<{success:boolean, submission:object, section:object}>}
+ */
+async function submitClass(course) {
+  return _request('POST', '/submit-class', { body: course });
+}
+
+/** List all class submissions (admin dashboard). */
+async function listSubmissions() {
+  return _request('GET', '/submissions');
+}
+
+/** Update a submission's review status / notes (admin dashboard). */
+async function updateSubmission(id, patch) {
+  return _request('PUT', `/submissions/${encodeURIComponent(id)}`, { body: patch });
+}
+
+/** Delete a submission (admin dashboard). */
+async function deleteSubmission(id) {
+  return _request('DELETE', `/submissions/${encodeURIComponent(id)}`);
+}
+
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
@@ -148,6 +173,10 @@ const API = {
   createResource,
   addCourseResource,
   listCourseResources,
+  submitClass,
+  listSubmissions,
+  updateSubmission,
+  deleteSubmission,
   ApiError,
   get baseUrl() {
     return BASE_URL;

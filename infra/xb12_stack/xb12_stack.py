@@ -22,6 +22,7 @@ from aws_cdk import (
     Stack,
 )
 from aws_cdk import aws_apigateway as apigw
+from aws_cdk import aws_dynamodb as dynamodb
 from aws_cdk import aws_cloudfront as cloudfront
 from aws_cdk import aws_cloudfront_origins as origins
 from aws_cdk import aws_iam as iam
@@ -45,6 +46,8 @@ EMBED_MODEL_ID = "amazon.titan-embed-text-v2:0"
 EMBED_DIM = "1024"
 # Minimum cosine similarity for a semantic search hit to be shown (tunable).
 SIMILARITY_MIN_SCORE = "0.37"
+# New table (created by this stack) that stores finalized class submissions.
+SUBMISSIONS_TABLE = "Xb12-submissions"
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _BACKEND = os.path.abspath(os.path.join(_HERE, "..", "..", "backend"))
@@ -153,6 +156,19 @@ class Xb12Stack(Stack):
             policy=json.dumps(access_policy_doc),
         )
 
+        # ---- Submissions table (new; stores finalized class submissions) --
+        submissions_table = dynamodb.Table(
+            self,
+            "Xb12SubmissionsTable",
+            table_name=SUBMISSIONS_TABLE,
+            partition_key=dynamodb.Attribute(
+                name="id", type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.RETAIN,  # keep submissions if stack is torn down
+        )
+        submissions_table.grant_read_write_data(lambda_role)
+
         # ---- Shared code layer -------------------------------------------
         common_layer = _lambda.LayerVersion(
             self,
@@ -165,6 +181,7 @@ class Xb12Stack(Stack):
         common_env = {
             "RESOURCE_TABLE": RESOURCE_TABLE,
             "HISTORY_TABLE": HISTORY_TABLE,
+            "SUBMISSIONS_TABLE": SUBMISSIONS_TABLE,
             "AOSS_ENDPOINT": AOSS_ENDPOINT,
             "AOSS_INDEX": AOSS_INDEX,
             "LOW_COST_THRESHOLD": LOW_COST_THRESHOLD,
@@ -196,6 +213,8 @@ class Xb12Stack(Stack):
         search_fn = make_fn("SearchResourcesFn", "search_resources")
         create_fn = make_fn("CreateResourceFn", "create_resource")
         course_fn = make_fn("CourseResourcesFn", "course_resources")
+        submit_fn = make_fn("SubmitClassFn", "submit_class", timeout=60)
+        submissions_fn = make_fn("SubmissionsFn", "submissions")
 
         # ---- REST API ----------------------------------------------------
         api = apigw.RestApi(
@@ -225,6 +244,18 @@ class Xb12Stack(Stack):
         course_res = api.root.add_resource("course-resources")
         course_res.add_method("GET", apigw.LambdaIntegration(course_fn))
         course_res.add_method("POST", apigw.LambdaIntegration(course_fn))
+
+        # /submit-class (POST) - finalize a class submission
+        submit_res = api.root.add_resource("submit-class")
+        submit_res.add_method("POST", apigw.LambdaIntegration(submit_fn))
+
+        # /submissions (GET)  and  /submissions/{id} (GET, PUT, DELETE)
+        submissions_res = api.root.add_resource("submissions")
+        submissions_res.add_method("GET", apigw.LambdaIntegration(submissions_fn))
+        submission_item = submissions_res.add_resource("{id}")
+        submission_item.add_method("GET", apigw.LambdaIntegration(submissions_fn))
+        submission_item.add_method("PUT", apigw.LambdaIntegration(submissions_fn))
+        submission_item.add_method("DELETE", apigw.LambdaIntegration(submissions_fn))
 
         # ---- Frontend hosting: S3 (private) + CloudFront (OAC) -----------
         site_bucket = s3.Bucket(

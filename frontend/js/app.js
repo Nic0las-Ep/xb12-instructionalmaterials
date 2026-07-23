@@ -233,6 +233,44 @@
   }
 
   // =========================================================================
+  // Submit class — finalize with a section-level XB12 code
+  // =========================================================================
+  async function submitClass() {
+    if (!currentCourse) {
+      showGlobalError('Load a course first.');
+      return;
+    }
+    const btn = $('btn-submit-class');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Submitting…';
+    hide('submit-result');
+    try {
+      const res = await API.submitClass(currentCourse);
+      const s = res.section || {};
+      const resultEl = $('submit-result');
+      resultEl.innerHTML = `
+        <h3>Class submitted — section XB12 code</h3>
+        <div>${xb12Badge(s.code, res.submission && res.submission.sectionCostStatus)} <strong>${esc(
+        s.code || ''
+      )}</strong> — ${esc(s.meaning || '')}</div>
+        <p class="explain">${esc(s.explanation || '')}</p>
+        <p class="small-note">${res.submission ? res.submission.materialCount : 0} material(s) recorded ·
+        ${(res.updatedResources || []).length} catalog entr${
+        (res.updatedResources || []).length === 1 ? 'y' : 'ies'
+      } updated with this section's usage.</p>`;
+      resultEl.classList.remove('hidden');
+      setStatus('submit-status', 'success', 'Submission recorded. An administrator can now review it.');
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (e) {
+      setStatus('submit-status', 'error', 'Could not submit the class: ' + esc(e.message));
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  }
+
+  // =========================================================================
   // Step 2a — search existing
   // =========================================================================
   async function runSearch() {
@@ -303,6 +341,9 @@
         title: r.title,
         xb12Code: r.xb12Code,
         materialType: r.materialType,
+        costType: r.costType,
+        costStatus: r.costStatus,
+        price: r.price,
       });
       btn.textContent = 'Added ✓';
       await refreshAdopted();
@@ -487,6 +528,9 @@
         title: created.resource.title,
         xb12Code: xb.code,
         materialType: created.resource.materialType,
+        costType: created.resource.costType,
+        costStatus: created.resource.costStatus,
+        price: created.resource.price,
       });
 
       const previewEl = $('xb12-preview');
@@ -552,6 +596,7 @@
       }
     });
     $('btn-save-new').addEventListener('click', saveNew);
+    $('btn-submit-class').addEventListener('click', submitClass);
     $('res-cost-type').addEventListener('change', onCostTypeChange);
     document.querySelectorAll('input[name="new-type"]').forEach((r) =>
       r.addEventListener('change', onNewTypeChange)
