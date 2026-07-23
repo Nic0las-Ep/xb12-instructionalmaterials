@@ -29,6 +29,10 @@ sys.path.insert(0, os.path.join(_BACKEND, "functions"))
 # publish_submission / published_links read env vars at import time.
 os.environ.setdefault("SUBMISSIONS_TABLE", "Xb12-submissions")
 os.environ.setdefault("PUBLISHED_LINKS_TABLE", "PublishedLinks-index")
+# The function modules create boto3 clients at import time, which requires a
+# region. Set one so the tests are hermetic and don't depend on ambient AWS
+# config. No AWS calls are actually made (the tests use a fake table).
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
 
 from botocore.exceptions import ClientError  # noqa: E402
 

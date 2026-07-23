@@ -67,6 +67,8 @@ def group_rows(rows):
                 "coursePrefix": row.get("coursePrefix", ""),
                 "courseNumber": row.get("courseNumber", ""),
                 "crn": row.get("crn", ""),
+                "xb12Code": row.get("xb12Code", ""),
+                "xb12Meaning": row.get("xb12Meaning", ""),
                 "destination": row.get("destination", ""),
                 "urls": [],
                 "_seen": set(),

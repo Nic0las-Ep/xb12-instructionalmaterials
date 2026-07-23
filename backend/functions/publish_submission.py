@@ -137,6 +137,10 @@ def publish(submission, destinations, published_by, table, now=None):
     course_prefix = submission.get("coursePrefix") or submission.get("department") or ""
     course_number = submission.get("courseNumber") or ""
     crn = submission.get("crn") or submission.get("CRN") or ""
+    # Section-level XB12 INSTRUCTIONAL-MATERIAL-COST code (the value reported to
+    # MIS). Included so the MIS destination can render it as a data element.
+    xb12_code = submission.get("sectionXb12Code") or ""
+    xb12_meaning = submission.get("sectionXb12Meaning") or ""
 
     published_count = 0
     skipped_count = 0
@@ -154,6 +158,8 @@ def publish(submission, destinations, published_by, table, now=None):
                 "coursePrefix": course_prefix,
                 "courseNumber": course_number,
                 "crn": crn,
+                "xb12Code": xb12_code,
+                "xb12Meaning": xb12_meaning,
                 "publishedAt": timestamp,
                 "publishedBy": published_by,
             }

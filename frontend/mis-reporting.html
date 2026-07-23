@@ -69,6 +69,13 @@
     td a { color: var(--mis-accent); text-decoration: none; word-break: break-all; }
     td a:hover { text-decoration: underline; }
     .sub-id { font-family: 'Courier New', monospace; font-size: 0.76rem; color: var(--muted); }
+    /* XB12 data-entry cell — styled to resemble a single-character MIS field */
+    .mis-de { display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border: 1.5px solid var(--mis-primary); border-radius: 5px;
+      background: #eff6ff; color: var(--mis-primary); font-family: 'Courier New', monospace;
+      font-weight: 700; font-size: 0.95rem; text-transform: uppercase; }
+    .mis-de.empty { border-style: dashed; border-color: var(--border); background: #f8fafc; color: var(--muted); }
+    thead th .de-hint { display: block; font-size: 0.62rem; font-weight: 600; opacity: 0.8; text-transform: none; letter-spacing: 0; }
     .row-count { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
     footer { text-align: center; color: var(--muted); font-size: 0.78rem; padding: 1.5rem; }
   </style>
@@ -93,8 +100,10 @@
 
   <main class="page" role="main">
     <p class="intro">
-      Published material links formatted as a compliance report. Filter by course or CRN. This is a
-      visual mockup and is not connected to a real state MIS system.
+      Published material links formatted as a compliance report. The <strong>XB12 Code</strong> column
+      is the single-character INSTRUCTIONAL-MATERIAL-COST value (A, C, D, E, F, G, Y) that would be
+      entered into the state MIS system for each section. Filter by course or CRN. This is a visual
+      mockup and is not connected to a real state MIS system.
     </p>
 
     <div class="filters">
@@ -141,6 +150,8 @@
           rows.push({
             course,
             crn: p.crn || '',
+            xb12Code: p.xb12Code || '',
+            xb12Meaning: p.xb12Meaning || '',
             url: u,
             publishedAt: p.publishedAt || '',
             submissionId: p.submissionId || '',
@@ -169,21 +180,35 @@
         return;
       }
 
-      const body = filtered.map(r => `
+      const body = filtered.map(r => {
+        const code = String(r.xb12Code || '').toUpperCase();
+        const de = code
+          ? `<span class="mis-de" title="${esc(r.xb12Meaning || '')}">${esc(code)}</span>`
+          : `<span class="mis-de empty" title="Not reported">—</span>`;
+        return `
         <tr>
           <td>${esc(r.course) || '—'}</td>
           <td>${esc(r.crn) || '—'}</td>
+          <td>${de}</td>
           <td><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a></td>
           <td>${esc(fmtDate(r.publishedAt))}</td>
           <td class="sub-id">${esc(r.submissionId)}</td>
-        </tr>`).join('');
+        </tr>`;
+      }).join('');
 
       content.innerHTML = `
         <div class="row-count">${filtered.length} record${filtered.length === 1 ? '' : 's'}</div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Course</th><th>CRN</th><th>Published URL</th><th>Published Date</th><th>Source Submission ID</th></tr>
+              <tr>
+                <th>Course</th>
+                <th>CRN</th>
+                <th>XB12 Code<span class="de-hint">DED# XB12 · Instructional-Material-Cost</span></th>
+                <th>Published URL</th>
+                <th>Published Date</th>
+                <th>Source Submission ID</th>
+              </tr>
             </thead>
             <tbody>${body}</tbody>
           </table>
