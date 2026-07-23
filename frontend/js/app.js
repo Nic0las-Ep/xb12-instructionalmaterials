@@ -32,13 +32,16 @@
     return 'xb12-none';
   }
 
-  function xb12Badge(code) {
+  function xb12Badge(code, status) {
     if (!code) return '';
     const cls = xb12BadgeClass(code);
     const meaning = XB12_MEANING[code] || '';
-    return `<span class="xb12-badge ${cls}" title="${esc(meaning)}"><span class="code">${esc(
+    const statusChip = status
+      ? ` <span class="xb12-status" title="Cost status">${esc(status)}</span>`
+      : '';
+    return `<span class="xb12-badge ${cls}" title="XB12 ${esc(code)}: ${esc(meaning)}"><span class="code">${esc(
       code
-    )}</span> XB12</span>`;
+    )}</span> XB12</span>${statusChip}`;
   }
 
   // ---- Alerts -------------------------------------------------------------
@@ -134,7 +137,7 @@
             <div class="ai-title">${esc(it.title || it.resourceId || 'Untitled resource')}</div>
             <div class="ai-meta">${esc(it.materialType || 'resource')}${ref ? ' · ' + ref : ''}</div>
           </div>
-          <div>${xb12Badge(it.xb12Code)}</div>`;
+          <div>${xb12Badge(it.xb12Code, it.costStatus)}</div>`;
         listEl.appendChild(div);
       });
   }
@@ -186,7 +189,7 @@
         <div class="rc-meta">${meta.join(' · ')}</div>
       </div>
       <div class="rc-actions">
-        ${xb12Badge(r.xb12Code)}
+        ${xb12Badge(r.xb12Code, r.costStatus)}
         <button class="btn-view">Add to course</button>
       </div>`;
     card.querySelector('button').addEventListener('click', () => adoptExisting(r, card));

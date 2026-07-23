@@ -1246,6 +1246,20 @@ tbody td { padding: 11px 14px; vertical-align: middle; }
 .xb12-y { background: rgba(220,38,38,0.10); color: #b91c1c; }
 .xb12-y .code { background: #dc2626; }
 
+/* Friendly cost-status label shown next to the XB12 code */
+.xb12-status {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: var(--burg-light);
+  color: var(--burg);
+  vertical-align: middle;
+}
+
 /* Adopted-resources list */
 .adopted-list { display: flex; flex-direction: column; gap: 0.55rem; }
 .adopted-item {

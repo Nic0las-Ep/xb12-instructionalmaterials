@@ -169,6 +169,28 @@ def classify(materials, low_cost_threshold=DEFAULT_LOW_COST_THRESHOLD):
     )
 
 
+# Map legacy / friendly cost-status markings to official XB12 letter codes.
+MARKING_TO_CODE = {
+    "ZTC-OER": "E",   # zero textbook cost via OER -> only no-cost OER material
+    "ZTC": "E",
+    "LTC": "D",       # low textbook cost -> low course material cost
+    "STANDARD": "Y",  # regular priced -> does not meet no/low-cost criteria
+    "NONE": "A",      # no material
+}
+
+
+def code_from_marking(marking):
+    """Return the XB12 letter code for a friendly marking, or None if unknown."""
+    if not marking:
+        return None
+    return MARKING_TO_CODE.get(str(marking).strip().upper())
+
+
+def is_letter_code(code):
+    """True if the value is already an official XB12 letter code."""
+    return isinstance(code, str) and code.strip().upper() in XB12_MEANINGS
+
+
 def zero_low_cost_marking(code):
     """
     Map an XB12 code to the friendly Zero/Low Textbook Cost marking used in

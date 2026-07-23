@@ -85,6 +85,8 @@ def handler(event, context):
     }
     code, explanation = xb12.classify([material], LOW_COST_THRESHOLD)
     ztc_ltc = xb12.zero_low_cost_marking(code)
+    # Friendly cost-status label kept alongside the official XB12 letter code.
+    cost_status = ztc_ltc or ("NONE" if code == "A" else "STANDARD")
 
     resource_id = str(uuid.uuid4())
     now = datetime.datetime.utcnow().isoformat() + "Z"
@@ -95,6 +97,7 @@ def handler(event, context):
         "materialType": material_type,
         "xb12Code": code,
         "ztcLtc": ztc_ltc,
+        "costStatus": cost_status,
         "createdAt": now,
     }
     # Only set indexed string attributes when non-empty (DynamoDB GSI keys
