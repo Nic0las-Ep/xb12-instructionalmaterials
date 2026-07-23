@@ -121,7 +121,7 @@ a:hover { text-decoration: underline; }
   background: var(--burg);
   color: #fff;
   padding: 0 2rem;
-  height: 64px;
+  height: 130px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -131,9 +131,18 @@ a:hover { text-decoration: underline; }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.header-left { display: flex; align-items: center; gap: 1rem; }
+.header-left { display: flex; align-items: center; gap: 1.2rem; }
 
+/* Real institution logo image (was a plain "FHDA" text badge). Falls back
+   to the old text-badge treatment via .header-logo--text if an image isn't
+   available on a given page. */
 .header-logo {
+  height: 108px;
+  width: auto;
+  display: block;
+}
+
+.header-logo--text {
   background: var(--gold);
   color: var(--burg);
   font-weight: 900;

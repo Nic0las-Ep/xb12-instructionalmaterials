@@ -447,6 +447,7 @@
       font-weight: 700;
       cursor: pointer;
       transition: background 0.18s;
+      margin-left: auto;
     }
     .btn-save:hover { background: var(--burg-dark); }
     .btn-close-modal {
@@ -566,7 +567,6 @@
       font-weight: 700;
       cursor: pointer;
       transition: background 0.18s;
-      margin-left: auto;
     }
     .btn-delete-sub:hover { background: rgba(220,38,38,0.08); }
 
@@ -589,20 +589,15 @@
 <!-- ══ SITE HEADER ══ -->
 <header class="site-header" role="banner">
   <div class="header-left">
-    <span class="header-logo">OER Admin</span>
+    <span class="header-logo">Admin</span>
     <div class="header-titles">
-      <h1>OER Survey Administration</h1>
+      <h1>Administration</h1>
       <p>Fall 2025 Submission Review</p>
     </div>
   </div>
   <div class="header-badge" id="header-total-badge">0 Submissions</div>
 </header>
 <div class="gold-bar"></div>
-
-<!-- ══ DEMO BANNER ══ -->
-<div class="demo-banner" role="note">
-  ⚠ <strong>Unauthenticated dashboard</strong> — submissions load live from the backend, but this page is not yet protected by an administrator login. Add access control before production use.
-</div>
 
 <!-- ══ MAIN PAGE ══ -->
 <main class="page" role="main">
@@ -621,11 +616,6 @@
       <div class="stat-label">Pending</div>
       <div class="stat-value" id="stat-pending">0</div>
       <div class="stat-sub">Awaiting review</div>
-    </div>
-    <div class="stat-card amber">
-      <div class="stat-label">Under Review</div>
-      <div class="stat-value" id="stat-under-review">0</div>
-      <div class="stat-sub">Currently reviewing</div>
     </div>
     <div class="stat-card green">
       <div class="stat-label">Approved</div>
@@ -653,9 +643,6 @@
   <div class="main-card">
     <div class="main-card-header">
       <span class="main-card-title">Survey Submissions</span>
-      <button class="btn-refresh" onclick="refreshFromStorage()" type="button" aria-label="Reload submissions from localStorage">
-        ↻ Refresh
-      </button>
     </div>
 
     <!-- Filters -->
@@ -687,7 +674,6 @@
         <select id="f-status" onchange="applyFilters()">
           <option value="">All Statuses</option>
           <option>Pending</option>
-          <option>Under Review</option>
           <option>Approved</option>
           <option>Needs Correction</option>
         </select>
@@ -771,7 +757,6 @@
           <label for="review-status">Review Status</label>
           <select id="review-status">
             <option>Pending</option>
-            <option>Under Review</option>
             <option>Approved</option>
             <option>Needs Correction</option>
           </select>
@@ -782,11 +767,11 @@
         </div>
       </div>
       <div class="review-actions">
+        <button class="btn-delete-sub" onclick="deleteSubmission()" type="button"
+          aria-label="Delete this submission">🗑 Delete Submission</button>
         <button class="btn-save" onclick="saveReview()" type="button">Save Review</button>
         <button class="btn-close-modal" onclick="closeModal()" type="button">Close</button>
         <span class="save-feedback" id="save-feedback" aria-live="polite">&#10003; Saved</span>
-        <button class="btn-delete-sub" onclick="deleteSubmission()" type="button"
-          aria-label="Delete this submission">🗑 Delete Submission</button>
       </div>
     </div>
 
@@ -870,7 +855,6 @@ function updateStats() {
 
   setText('stat-total',           all.length);
   setText('stat-pending',         all.filter(s => s.status === 'Pending').length);
-  setText('stat-under-review',    all.filter(s => s.status === 'Under Review').length);
   setText('stat-approved',        all.filter(s => s.status === 'Approved').length);
   setText('stat-needs-correction',all.filter(s => s.status === 'Needs Correction').length);
   setText('stat-ltc',             all.filter(s => s.materialType === 'Low-Cost Material (LTC)').length);

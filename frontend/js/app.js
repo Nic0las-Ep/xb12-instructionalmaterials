@@ -215,7 +215,7 @@
     const classEl = $('filter-class');
     if (classEl) classEl.value = `${prefix} ${number}`;
     await refreshAdopted();
-    $('step-adopted').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('step-add').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function refreshAdopted() {
