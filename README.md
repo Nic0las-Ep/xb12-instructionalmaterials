@@ -64,7 +64,7 @@ OpenSearch Serverless (resource search) · Amazon Bedrock (embeddings)
 | --- | --- | --- |
 | `course-schedule.html` | `course-schedule` | Section table: class, section, professor, CRN, and cost code (ZTC/LTC/Standard). |
 | `bookstore.html` | `bookstore` | Per-material table: class, professor, CRN, section, textbook ISBN, learning-platform URL, and price (with Class/CRN filters). |
-| `mis-reporting.html` | `mis-reporting` | Compliance report table (Course, CRN, XB12 data-entry code, URL, date, submission id) with Course/CRN filters. |
+| `mis-reporting.html` | `mis-reporting` | Simulated **XB Section Data Record** view (CCC MIS): one record per section with the XB12 data-entry code, material links, and reporting metadata (XB domain; compiled into a standard MIS data file by the college data coordinator; processed by district/campus IT). Course/CRN filters. |
 
 Each page escapes all backend text, opens links with
 `target="_blank" rel="noopener noreferrer"`, and has loading / empty / error
@@ -172,8 +172,11 @@ one publication, so no grouping is needed.
 - **Bookstore** — one row per material: class, professor, CRN, section, the
   textbook **ISBN** and the learning-platform **URL** in separate columns, and
   the **price**.
-- **MIS Reporting** — Course, CRN, XB12 code (data-entry column), published URL,
-  date, and source submission id.
+- **MIS Reporting** — one **XB Section Data Record** per section (record type,
+  course, section, CRN, the XB12 data-entry code, material links, reported date,
+  source submission id), with a reporting-metadata panel describing the XB
+  domain and the MIS data-file submission workflow (data coordinator →
+  district/campus IT).
 
 > Price is captured on submission going forward; submissions created before this
 > was added show no price until they are re-submitted through the form.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>State Compliance / MIS Reporting — Published Material Links</title>
+  <title>MIS Reporting — XB Section Data Record (Instructional-Material-Cost)</title>
   <style>
     :root {
       --mis-primary: #1e40af;  /* blue-800 */
@@ -25,8 +25,8 @@
       background: linear-gradient(135deg, #0f172a, var(--mis-slate));
       color: #fff; padding: 1.1rem 1.6rem;
     }
-    .site-header h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; gap: 0.55rem; }
-    .site-header p { opacity: 0.85; font-size: 0.86rem; margin-top: 2px; }
+    .site-header h1 { font-size: 1.28rem; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+    .site-header p { opacity: 0.85; font-size: 0.86rem; margin-top: 3px; }
     .compliance-badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
       font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
       padding: 3px 9px; border-radius: 999px; }
@@ -43,14 +43,23 @@
     .mock-banner { background: #fef3c7; border-bottom: 1px solid #fde68a; color: #92400e;
       font-size: 0.82rem; font-weight: 600; text-align: center; padding: 0.5rem 1rem; }
 
-    .page { max-width: 1100px; margin: 0 auto; padding: 1.6rem; }
+    .page { max-width: 1150px; margin: 0 auto; padding: 1.6rem; }
     .intro { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.1rem; }
 
-    .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    /* Reporting metadata panel (regulatory framing) */
+    .meta-panel { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--mis-primary);
+      border-radius: var(--radius); padding: 0.9rem 1.1rem; margin-bottom: 1.2rem; }
+    .meta-panel h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mis-primary);
+      margin-bottom: 0.7rem; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.7rem 1.4rem; }
+    .meta-item .k { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    .meta-item .v { font-size: 0.86rem; color: var(--text); margin-top: 2px; }
+    .meta-item .v strong { color: var(--mis-primary); }
+
+    .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: flex-end; }
     .filters label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; font-weight: 700;
       color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .filters input { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.88rem;
-      min-width: 180px; }
+    .filters input { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.88rem; min-width: 180px; }
     .filters input:focus { outline: none; border-color: var(--mis-accent); }
 
     .state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
@@ -60,16 +69,22 @@
       animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .record-caption { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.4rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: baseline; }
+    .record-caption strong { color: var(--text); }
     .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     thead th { background: var(--mis-primary); color: #fff; text-align: left; padding: 0.6rem 0.8rem;
-      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; position: sticky; top: 0; }
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; position: sticky; top: 0; white-space: nowrap; }
     tbody td { padding: 0.6rem 0.8rem; border-top: 1px solid var(--border); vertical-align: top; }
     tbody tr:nth-child(even) { background: #fbfcfe; }
     td a { color: var(--mis-accent); text-decoration: none; word-break: break-all; }
     td a:hover { text-decoration: underline; }
     .sub-id { font-family: 'Courier New', monospace; font-size: 0.76rem; color: var(--muted); }
-    /* XB12 data-entry cell — styled to resemble a single-character MIS field */
+    .record-type { display: inline-block; font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: 700;
+      background: #eef2ff; color: var(--mis-primary); border: 1px solid #c7d2fe; border-radius: 4px; padding: 1px 6px; }
+    .links-list { display: flex; flex-direction: column; gap: 3px; }
+    .links-list .none { color: #94a3b8; }
+    /* XB12 data-entry cell — a single-character MIS Section data element */
     .mis-de { display: inline-flex; align-items: center; justify-content: center;
       width: 30px; height: 30px; border: 1.5px solid var(--mis-primary); border-radius: 5px;
       background: #eff6ff; color: var(--mis-primary); font-family: 'Courier New', monospace;
@@ -82,9 +97,9 @@
 </head>
 <body>
   <header class="site-header" role="banner">
-    <h1><span aria-hidden="true">🏛️</span> State Compliance / MIS Reporting — Published Material Links
-      <span class="compliance-badge">Compliance</span></h1>
-    <p>Structured reporting view of published instructional-material links.</p>
+    <h1><span aria-hidden="true">🏛️</span> MIS Reporting — XB Section Data Record
+      <span class="compliance-badge">XB Domain · DED# XB12</span></h1>
+    <p>California Community Colleges MIS · Section Data Records · INSTRUCTIONAL-MATERIAL-COST (XB12)</p>
   </header>
 
   <nav class="demo-nav" aria-label="Demo navigation">
@@ -96,15 +111,38 @@
     <a href="mis-reporting.html" aria-current="page">MIS Reporting Mock</a>
   </nav>
 
-  <div class="mock-banner" role="note">Mock MIS destination — demonstration only.</div>
+  <div class="mock-banner" role="note">
+    Mock MIS destination — simulated XB Section Data Record. Demonstration only; not a live CCCCO MIS submission.
+  </div>
 
   <main class="page" role="main">
     <p class="intro">
-      Published material links formatted as a compliance report. The <strong>XB12 Code</strong> column
-      is the single-character INSTRUCTIONAL-MATERIAL-COST value (A, C, D, E, F, G, Y) that would be
-      entered into the state MIS system for each section. Filter by course or CRN. This is a visual
-      mockup and is not connected to a real state MIS system.
+      Each row below is one <strong>Section Data Record</strong> in the <strong>XB reporting domain</strong>,
+      carrying the section's <strong>XB12 INSTRUCTIONAL-MATERIAL-COST</strong> value. In production these records
+      are compiled into a standard MIS data file and submitted through the college's normal reporting channel.
     </p>
+
+    <section class="meta-panel" aria-label="Reporting metadata">
+      <h2>Reporting metadata</h2>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="k">Reporting Domain</div>
+          <div class="v"><strong>XB</strong> — Section Data Records</div>
+        </div>
+        <div class="meta-item">
+          <div class="k">Data Element</div>
+          <div class="v"><strong>XB12</strong> — Instructional-Material-Cost · Format X (single character: A, C, D, E, F, G, Y)</div>
+        </div>
+        <div class="meta-item">
+          <div class="k">Submission Method</div>
+          <div class="v">Compiled into a standard <strong>MIS data file</strong>, prepared by the college <strong>data coordinator</strong></div>
+        </div>
+        <div class="meta-item">
+          <div class="k">Processing</div>
+          <div class="v">Uploaded &amp; processed by district / campus <strong>Information Technology</strong></div>
+        </div>
+      </div>
+    </section>
 
     <div class="filters">
       <label>Course
@@ -118,16 +156,16 @@
     <div id="content" aria-live="polite">
       <div class="state" id="loading">
         <div class="spinner" aria-hidden="true"></div>
-        Loading published material records…
+        Loading XB Section Data Records…
       </div>
     </div>
   </main>
 
-  <footer>MIS Reporting — demonstration mockup only. Not a real state MIS integration.</footer>
+  <footer>MIS Reporting — demonstration mockup only. Simulated XB Section Data Record; not a real CCCCO MIS integration.</footer>
 
   <script src="js/api.js"></script>
   <script>
-    let ROWS = [];
+    let RECORDS = [];
 
     function esc(str) {
       return String(str == null ? '' : str)
@@ -141,24 +179,20 @@
       return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
-    /* Flatten grouped publications into one row per URL for the report table. */
-    function flatten(publications) {
-      const rows = [];
-      publications.forEach(p => {
-        const course = [p.coursePrefix, p.courseNumber].filter(Boolean).join(' ');
-        (p.urls || []).forEach(u => {
-          rows.push({
-            course,
-            crn: p.crn || '',
-            xb12Code: p.xb12Code || '',
-            xb12Meaning: p.xb12Meaning || '',
-            url: u,
-            publishedAt: p.publishedAt || '',
-            submissionId: p.submissionId || '',
-          });
-        });
-      });
-      return rows;
+    /* One Section Data Record per published section. The XB12 value is a
+       section-level element, so each section appears once with its material
+       links listed within the record. */
+    function buildRecords(publications) {
+      return publications.map(p => ({
+        course: [p.coursePrefix, p.courseNumber].filter(Boolean).join(' '),
+        section: p.section || '',
+        crn: p.crn || '',
+        xb12Code: p.xb12Code || '',
+        xb12Meaning: p.xb12Meaning || '',
+        urls: Array.isArray(p.urls) ? p.urls : [],
+        publishedAt: p.publishedAt || '',
+        submissionId: p.submissionId || '',
+      }));
     }
 
     function render() {
@@ -166,13 +200,13 @@
       const courseQ = (document.getElementById('filter-course').value || '').trim().toLowerCase();
       const crnQ = (document.getElementById('filter-crn').value || '').trim().toLowerCase();
 
-      const filtered = ROWS.filter(r =>
+      const filtered = RECORDS.filter(r =>
         (!courseQ || r.course.toLowerCase().includes(courseQ)) &&
         (!crnQ || String(r.crn).toLowerCase().includes(crnQ))
       );
 
-      if (!ROWS.length) {
-        content.innerHTML = '<div class="state">No published material links to report.</div>';
+      if (!RECORDS.length) {
+        content.innerHTML = '<div class="state">No XB Section Data Records have been reported.</div>';
         return;
       }
       if (!filtered.length) {
@@ -185,28 +219,40 @@
         const de = code
           ? `<span class="mis-de" title="${esc(r.xb12Meaning || '')}">${esc(code)}</span>`
           : `<span class="mis-de empty" title="Not reported">—</span>`;
+        const links = r.urls.length
+          ? `<div class="links-list">${r.urls.map(u =>
+              `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a>`).join('')}</div>`
+          : '<span class="none">None</span>';
         return `
         <tr>
+          <td><span class="record-type" title="Section Data Record">SX</span></td>
           <td>${esc(r.course) || '—'}</td>
+          <td>${esc(r.section) || '—'}</td>
           <td>${esc(r.crn) || '—'}</td>
           <td>${de}</td>
-          <td><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a></td>
+          <td>${links}</td>
           <td>${esc(fmtDate(r.publishedAt))}</td>
           <td class="sub-id">${esc(r.submissionId)}</td>
         </tr>`;
       }).join('');
 
       content.innerHTML = `
-        <div class="row-count">${filtered.length} record${filtered.length === 1 ? '' : 's'}</div>
+        <div class="record-caption">
+          <strong>XB — Section Data Records</strong>
+          <span>${filtered.length} record${filtered.length === 1 ? '' : 's'}</span>
+          <span>Reportable element: XB12 (Instructional-Material-Cost)</span>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
+                <th>Record</th>
                 <th>Course</th>
+                <th>Section</th>
                 <th>CRN</th>
-                <th>XB12 Code<span class="de-hint">DED# XB12 · Instructional-Material-Cost</span></th>
-                <th>Published URL</th>
-                <th>Published Date</th>
+                <th>XB12<span class="de-hint">DED# XB12 · Instructional-Material-Cost</span></th>
+                <th>Instructional Material Link(s)</th>
+                <th>Reported</th>
                 <th>Source Submission ID</th>
               </tr>
             </thead>
@@ -220,10 +266,10 @@
       try {
         await API.initConfig();
         const data = await API.getPublishedLinks('mis-reporting');
-        ROWS = flatten(Array.isArray(data.publications) ? data.publications : []);
+        RECORDS = buildRecords(Array.isArray(data.publications) ? data.publications : []);
         render();
       } catch (err) {
-        content.innerHTML = `<div class="state error">Unable to load published links. ${esc(err.message || '')}</div>`;
+        content.innerHTML = `<div class="state error">Unable to load XB Section Data Records. ${esc(err.message || '')}</div>`;
       }
     }
 
