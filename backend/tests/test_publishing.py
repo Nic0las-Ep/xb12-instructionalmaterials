@@ -257,6 +257,53 @@ class PriceEnrichmentTests(unittest.TestCase):
         self.assertEqual(row["materials"][0]["price"], 40)
 
 
+class FakeResourcesTable:
+    """Resource catalog stand-in whose ISBN-index query returns preset rows."""
+
+    def __init__(self, items):
+        self._items = items
+
+    def query(self, **kwargs):
+        return {"Items": list(self._items)}
+
+
+class OerUrlEnrichmentTests(unittest.TestCase):
+    def test_fills_oer_textbook_link(self):
+        snap = [{"title": "Chemistry 2e", "isbn": "9781947172616", "url": "", "costStatus": "ZTC-OER"}]
+        res = FakeResourcesTable([{
+            "ISBN": "9781947172616", "isOER": True, "xb12Code": "E",
+            "url": "https://openstax.org/details/books/chemistry-2e",
+        }])
+        ps.enrich_snapshot_urls(snap, res)
+        self.assertEqual(snap[0]["url"], "https://openstax.org/details/books/chemistry-2e")
+
+    def test_skips_non_oer_material(self):
+        snap = [{"title": "Paid", "isbn": "111", "url": "", "costStatus": "LTC"}]
+        res = FakeResourcesTable([{"ISBN": "111", "xb12Code": "D", "url": "https://pub.com/x"}])
+        ps.enrich_snapshot_urls(snap, res)
+        self.assertEqual(snap[0]["url"], "")
+
+    def test_skips_when_matched_resource_not_oer(self):
+        snap = [{"title": "X", "isbn": "111", "url": "", "costStatus": "ZTC-OER"}]
+        res = FakeResourcesTable([{"ISBN": "111", "xb12Code": "Y", "url": "https://cengage.com/x"}])
+        ps.enrich_snapshot_urls(snap, res)
+        self.assertFalse(snap[0]["url"])
+
+    def test_detects_openstax_by_marker(self):
+        snap = [{"title": "Biology 2e", "isbn": "222", "url": "", "costStatus": "ZTC-OER"}]
+        res = FakeResourcesTable([{
+            "ISBN": "222", "title": "Biology 2e", "publisher": "OpenStax",
+            "url": "https://openstax.org/details/books/biology-2e",
+        }])
+        ps.enrich_snapshot_urls(snap, res)
+        self.assertEqual(snap[0]["url"], "https://openstax.org/details/books/biology-2e")
+
+    def test_no_resources_table_noop(self):
+        snap = [{"isbn": "1", "url": "", "costStatus": "ZTC-OER"}]
+        ps.enrich_snapshot_urls(snap, None)
+        self.assertEqual(snap[0]["url"], "")
+
+
 class PublishTests(unittest.TestCase):
     def test_publish_one_row_per_destination(self):
         sub = _submission([{"url": "https://example.edu/a"}])

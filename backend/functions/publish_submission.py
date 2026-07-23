@@ -31,7 +31,7 @@ import os
 import uuid
 
 import boto3
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
 
 from xb12_common import urls as urlutil
@@ -49,6 +49,9 @@ PUBLISHED_LINKS_TABLE = os.environ["PUBLISHED_LINKS_TABLE"]
 # Adoption history table (Textbookhistory-index) - used to enrich material
 # prices at publish time when the submission snapshot predates price capture.
 HISTORY_TABLE = os.environ.get("HISTORY_TABLE")
+# Resource catalog (Resource-index) - used to enrich an OER textbook's webpage
+# link (e.g. an OpenStax page) from the catalog when the snapshot has no URL.
+RESOURCE_TABLE = os.environ.get("RESOURCE_TABLE")
 
 # Canonical destination ids and their human labels.
 DESTINATIONS = {
@@ -63,6 +66,7 @@ _ddb = boto3.resource("dynamodb")
 _submissions = _ddb.Table(SUBMISSIONS_TABLE)
 _published = _ddb.Table(PUBLISHED_LINKS_TABLE)
 _history = _ddb.Table(HISTORY_TABLE) if HISTORY_TABLE else None
+_resources = _ddb.Table(RESOURCE_TABLE) if RESOURCE_TABLE else None
 
 
 def _submission_id(event):
@@ -265,7 +269,67 @@ def enrich_snapshot_prices(snapshot, submission, history_table):
     return snapshot
 
 
-def publish(submission, destinations, published_by, table, now=None, history_table=None):
+# Resource fields that may hold an OER textbook's webpage link.
+_RESOURCE_URL_FIELDS = ("url", "oerUrl", "resourceUrl", "platformUrl", "link")
+
+
+def _resource_is_oer(resource):
+    if resource.get("isOER"):
+        return True
+    if str(resource.get("xb12Code") or "").strip().upper() in ("E", "G"):
+        return True
+    marker = " ".join(
+        str(resource.get(f) or "") for f in ("title", "publisher", "author") + _RESOURCE_URL_FIELDS
+    ).lower()
+    # OpenStax / LibreTexts / etc. are OER publishers.
+    return any(m in marker for m in ("openstax", "libretext", "oercommons", "open textbook"))
+
+
+def _oer_url_for_isbn(isbn, resources_table):
+    """Return an OER webpage URL for an ISBN from the catalog, or None."""
+    try:
+        items = resources_table.query(
+            IndexName="ISBN-index", KeyConditionExpression=Key("ISBN").eq(isbn)
+        ).get("Items", [])
+    except Exception:  # noqa: BLE001 - enrichment is best-effort
+        return None
+    # Prefer OER resources; only surface a link from an OER catalog entry so we
+    # never attach a paid publisher's page to a book.
+    for resource in items:
+        if not _resource_is_oer(resource):
+            continue
+        for field in _RESOURCE_URL_FIELDS:
+            normalized = urlutil.normalize_url(resource.get(field) or "")
+            if normalized:
+                return normalized
+    return None
+
+
+def enrich_snapshot_urls(snapshot, resources_table):
+    """
+    Fill in a link for OER textbooks that have an ISBN but no URL, using the
+    catalog's OER entry for that ISBN. Restricted to OER materials so paid
+    textbooks are never given a publisher link. Best-effort.
+    """
+    if not resources_table:
+        return snapshot
+    for material in snapshot:
+        if material.get("url"):
+            continue
+        isbn = str(material.get("isbn") or "").strip()
+        if not isbn:
+            continue
+        # Only enrich links for materials that are OER (e.g. costStatus ZTC-OER).
+        if "oer" not in str(material.get("costStatus") or "").lower():
+            continue
+        url = _oer_url_for_isbn(isbn, resources_table)
+        if url:
+            material["url"] = url
+    return snapshot
+
+
+def publish(submission, destinations, published_by, table, now=None,
+            history_table=None, resources_table=None):
     """
     Write ONE idempotent row per (submission, destination) for an approved
     submission and return ``(result_dict, error_message)``.
@@ -281,6 +345,7 @@ def publish(submission, destinations, published_by, table, now=None, history_tab
     """
     materials = build_material_snapshot(submission)
     materials = enrich_snapshot_prices(materials, submission, history_table)
+    materials = enrich_snapshot_urls(materials, resources_table)
     url_pairs = extract_publishable_urls(submission)
     urls = [pair["normalizedUrl"] for pair in url_pairs]
     if not materials and not urls:
@@ -380,7 +445,8 @@ def handler(event, context):
     published_by = _resolve_publisher(event)
 
     result, error = publish(
-        submission, destinations, published_by, _published, history_table=_history
+        submission, destinations, published_by, _published,
+        history_table=_history, resources_table=_resources,
     )
     if error:
         # A storage failure is a server condition; anything else (e.g. nothing

@@ -198,6 +198,13 @@ Anza burgundy/gold branding) so they match the survey and admin pages.
 > from the course's live adoption records (Textbookhistory) — matching by ISBN
 > first, then by normalized URL — so the Bookstore price populates without
 > re-finalizing. A price of `0` (e.g. OER) is shown as **Free**.
+>
+> **OER textbook links:** OER textbooks (e.g. OpenStax) have both an ISBN and a
+> free-webpage URL. When an OER material has an ISBN but no URL, the publish
+> step enriches its link from the catalog's OER entry for that ISBN
+> (Resource-index, ISBN-index). This is restricted to OER materials so a paid
+> textbook is never given a publisher link. The Bookstore shows the ISBN and
+> the link (column "Online / OER Link") and tags OER rows with an **OER** badge.
 
 ---
 

@@ -17,6 +17,9 @@
     .demo-nav a[aria-current="page"] { background: var(--burg); color: #fff; }
 
     .isbn { font-family: 'Courier New', monospace; font-size: 0.83rem; }
+    .oer-tag { display: inline-block; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.05em;
+      background: rgba(22,163,74,0.14); color: #15803d; border-radius: 4px; padding: 1px 5px;
+      vertical-align: middle; }
     .price { font-weight: 700; white-space: nowrap; }
     .price.free { color: var(--success); }
     .muted-dash { color: #cbd5e1; }
@@ -53,8 +56,9 @@
     <div class="hero" style="border-radius: var(--radius); margin-bottom: 1.6rem;">
       <h1>Campus Bookstore — Approved Course Material Links</h1>
       <p>
-        Approved textbooks (by <strong>ISBN</strong>) and learning-platform links, with price,
-        for each course section. This is a demonstration mockup and is not connected to a real
+        Approved textbooks (by <strong>ISBN</strong>) and online links, with price, for each course
+        section. <strong>OER</strong> textbooks (e.g. OpenStax) show both their ISBN and a link to
+        the free online edition. This is a demonstration mockup and is not connected to a real
         bookstore system.
       </p>
     </div>
@@ -125,11 +129,12 @@
             isbn: hasIsbn ? String(m.isbn) : '',
             url: hasUrl ? String(m.url) : '',
             price: hasPrice ? m.price : '',
+            oer: /oer/i.test(m.costStatus || ''),
           });
         });
         // Fallback for legacy publications that only carried URLs.
         if (!materials.length && Array.isArray(p.urls)) {
-          p.urls.forEach(u => rows.push({ ...base, title: '', isbn: '', url: u, price: '' }));
+          p.urls.forEach(u => rows.push({ ...base, title: '', isbn: '', url: u, price: '', oer: false }));
         }
       });
       return rows;
@@ -155,7 +160,10 @@
       }
 
       const body = filtered.map(r => {
-        const isbn = r.isbn ? `<span class="isbn">${esc(r.isbn)}</span>` : '<span class="muted-dash">—</span>';
+        const oerTag = r.oer ? ' <span class="oer-tag" title="Open Educational Resource">OER</span>' : '';
+        const isbn = r.isbn
+          ? `<span class="isbn">${esc(r.isbn)}</span>${oerTag}`
+          : (r.oer ? `<span class="muted-dash">—</span>${oerTag}` : '<span class="muted-dash">—</span>');
         const url = r.url
           ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>`
           : '<span class="muted-dash">—</span>';
@@ -182,7 +190,7 @@
             <thead>
               <tr>
                 <th>Class</th><th>Professor</th><th>CRN</th><th>Section</th>
-                <th>ISBN (Textbook)</th><th>Learning Platform URL</th><th>Price</th>
+                <th>ISBN (Textbook)</th><th>Online / OER Link</th><th>Price</th>
               </tr>
             </thead>
             <tbody>${body}</tbody>
