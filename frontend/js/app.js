@@ -673,6 +673,13 @@
     onNewTypeChange();
     onCostTypeChange();
 
+    // The Add-resource / search fields must start empty until a course is
+    // loaded (guards against browser autofill or form restoration).
+    [
+      'isbn-input', 'platform-url', 'res-title', 'res-author', 'res-publisher',
+      'res-subject', 'res-price', 'search-q', 'filter-class', 'filter-subject',
+    ].forEach((id) => { if ($(id)) $(id).value = ''; });
+
     $('btn-load-course').addEventListener('click', loadCourse);
     $('btn-search').addEventListener('click', runSearch);
     $('search-q').addEventListener('keydown', (e) => {

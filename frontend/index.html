@@ -157,7 +157,7 @@
         <div class="form-group">
           <label for="isbn-input">ISBN *</label>
           <div style="display:flex; gap:0.6rem;">
-            <input type="text" id="isbn-input" placeholder="e.g. 9781319491512" />
+            <input type="text" id="isbn-input" placeholder="e.g. 9781319491512" autocomplete="off" />
             <button class="btn-primary" id="btn-isbn-lookup" style="flex:0 0 auto;">Look up</button>
           </div>
           <p class="small-note">We'll search Google Books &amp; Open Library and pre-fill what we find.</p>
@@ -169,7 +169,7 @@
       <div id="new-platform" class="hidden">
         <div class="form-group">
           <label for="platform-url">Platform URL *</label>
-          <input type="url" id="platform-url" placeholder="https://…" />
+          <input type="url" id="platform-url" placeholder="https://…" autocomplete="off" />
           <p class="small-note">Learning platforms have no ISBN — we register them by URL.</p>
         </div>
       </div>
@@ -179,21 +179,21 @@
       <div class="form-row">
         <div class="form-group" id="fg-title">
           <label for="res-title">Title *</label>
-          <input type="text" id="res-title" placeholder="Resource title" />
+          <input type="text" id="res-title" placeholder="Resource title" autocomplete="off" />
         </div>
         <div class="form-group" id="fg-author">
           <label for="res-author">Author</label>
-          <input type="text" id="res-author" placeholder="Author(s)" />
+          <input type="text" id="res-author" placeholder="Author(s)" autocomplete="off" />
         </div>
       </div>
       <div class="form-row">
         <div class="form-group" id="fg-publisher">
           <label for="res-publisher">Publisher</label>
-          <input type="text" id="res-publisher" placeholder="Publisher" />
+          <input type="text" id="res-publisher" placeholder="Publisher" autocomplete="off" />
         </div>
         <div class="form-group">
           <label for="res-subject">Subject</label>
-          <input type="text" id="res-subject" placeholder="e.g. Biology" />
+          <input type="text" id="res-subject" placeholder="e.g. Biology" autocomplete="off" />
         </div>
       </div>
 
@@ -209,7 +209,7 @@
         </div>
         <div class="form-group" id="fg-price">
           <label for="res-price">Price (USD) <span class="field-flag" id="price-flag"></span></label>
-          <input type="number" id="res-price" placeholder="e.g. 79.99" min="0" step="0.01" />
+          <input type="number" id="res-price" placeholder="e.g. 79.99" min="0" step="0.01" autocomplete="off" />
         </div>
       </div>
 
