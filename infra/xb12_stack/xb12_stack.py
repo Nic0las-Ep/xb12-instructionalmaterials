@@ -171,6 +171,9 @@ class Xb12Stack(Stack):
             "EMBED_MODEL_ID": EMBED_MODEL_ID,
             "EMBED_DIM": EMBED_DIM,
             "SIMILARITY_MIN_SCORE": SIMILARITY_MIN_SCORE,
+            # Optional paid price source (ISBNdb). Leave blank to disable; when
+            # set, ISBN lookups return the list price (MSRP) automatically.
+            "ISBNDB_API_KEY": os.environ.get("ISBNDB_API_KEY", ""),
         }
 
         functions_code = _lambda.Code.from_asset(os.path.join(_BACKEND, "functions"))

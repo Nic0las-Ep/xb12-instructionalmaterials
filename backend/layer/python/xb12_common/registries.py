@@ -2,13 +2,18 @@
 Look up textbook metadata from reliable public book registries by ISBN.
 
 Sources (queried in order, results merged):
-  1. Google Books API   - title, authors, publisher, date, description, price
-  2. Open Library API   - title, authors, publisher, date  (fallback / fill-in)
+  1. ISBNdb API         - title, authors, publisher, and list price (MSRP).
+                          Requires ISBNDB_API_KEY; this is the only source that
+                          reliably carries textbook pricing.
+  2. Google Books API   - title, authors, publisher, date, description, price
+                          (retail price is often absent for textbooks).
+  3. Open Library API   - title, authors, publisher, date  (fallback / fill-in)
 
 Uses only the Python standard library (urllib) so no bundled deps are needed.
 """
 
 import json
+import os
 import re
 import urllib.request
 import urllib.parse
@@ -17,18 +22,62 @@ import urllib.error
 # Fields the application expects for a complete textbook record.
 REQUIRED_FIELDS = ("title", "author", "publisher", "price")
 
+# Optional paid price source (ISBNdb). When no key is configured the lookup
+# simply falls back to the free sources and the UI prompts for the price.
+ISBNDB_API_KEY = os.environ.get("ISBNDB_API_KEY", "")
+ISBNDB_BASE = os.environ.get("ISBNDB_BASE", "https://api2.isbndb.com")
+
 
 def _normalize_isbn(isbn):
     return re.sub(r"[^0-9Xx]", "", isbn or "").upper()
 
 
-def _get_json(url, timeout=8):
-    req = urllib.request.Request(url, headers={"User-Agent": "xb12-registry/1.0"})
+def _get_json(url, timeout=8, headers=None):
+    base = {"User-Agent": "xb12-registry/1.0"}
+    if headers:
+        base.update(headers)
+    req = urllib.request.Request(url, headers=base)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, urllib.error.HTTPError, ValueError, TimeoutError):
         return None
+
+
+def _parse_price(value):
+    """Extract a numeric price from an ISBNdb msrp value (number or string)."""
+    if value in (None, "", 0, "0", "0.00"):
+        return None
+    try:
+        amount = float(str(value).replace("$", "").replace(",", "").strip())
+    except (ValueError, TypeError):
+        return None
+    return amount if amount > 0 else None
+
+
+def _from_isbndb(isbn):
+    """Query ISBNdb for metadata + list price. Requires ISBNDB_API_KEY."""
+    if not ISBNDB_API_KEY:
+        return {}
+    url = f"{ISBNDB_BASE.rstrip('/')}/book/{urllib.parse.quote(isbn)}"
+    data = _get_json(url, headers={"Authorization": ISBNDB_API_KEY})
+    book = (data or {}).get("book") or {}
+    if not book:
+        return {}
+    result = {
+        "title": book.get("title") or book.get("title_long"),
+        "author": ", ".join(book.get("authors", []) or []) or None,
+        "publisher": book.get("publisher"),
+        "publishedDate": book.get("date_published"),
+        "description": book.get("synopsis"),
+        "source": "isbndb",
+    }
+    price = _parse_price(book.get("msrp"))
+    if price is not None:
+        result["price"] = price
+        result["currency"] = "USD"
+        result["priceSource"] = "isbndb (MSRP)"
+    return {k: v for k, v in result.items() if v is not None}
 
 
 def _from_google_books(isbn):
@@ -109,15 +158,23 @@ def lookup_isbn(isbn):
     merged = {}
     sources = []
 
+    # 1) ISBNdb first - it is the reliable source for list price (MSRP).
+    isbndb = _from_isbndb(clean)
+    if isbndb:
+        sources.append("isbndb")
+        merged.update(isbndb)
+
+    # 2) Google Books - fills any gaps; only sets price if not already known.
     google = _from_google_books(clean)
     if google:
         sources.append("googleBooks")
-        merged.update(google)
+        for k, v in google.items():
+            merged.setdefault(k, v)
 
+    # 3) Open Library - final fallback for bibliographic fields.
     openlib = _from_open_library(clean)
     if openlib:
         sources.append("openLibrary")
-        # Only fill in fields Google Books did not already provide.
         for k, v in openlib.items():
             merged.setdefault(k, v)
 
