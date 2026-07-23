@@ -179,11 +179,15 @@
   // =========================================================================
   async function loadCourse() {
     clearGlobalError();
-    const prefix = $('course-prefix').value.trim().toUpperCase();
-    const number = $('course-number').value.trim();
+    // The single field holds the full class, e.g. "ACCT 01A": the first token
+    // is the department prefix and the remainder is the course number.
+    const rawClass = $('course-prefix').value.trim().replace(/\s+/g, ' ');
+    const tokens = rawClass.split(' ');
+    const prefix = (tokens.shift() || '').toUpperCase();
+    const number = tokens.join(' ');
     const crn = $('crn').value.trim();
     if (!prefix || !number) {
-      showGlobalError('Please enter both a course prefix and course number.');
+      showGlobalError('Please enter the department and course number, e.g. ACCT 01A.');
       return;
     }
     if (!crn) {
@@ -325,7 +329,7 @@
   // Clear the whole form after a submission so a new class can be entered.
   function resetForm() {
     currentCourse = null;
-    ['course-prefix', 'course-number', 'crn', 'section', 'year', 'prof-first', 'prof-last']
+    ['course-prefix', 'crn', 'section', 'year', 'prof-first', 'prof-last']
       .forEach((id) => { if ($(id)) $(id).value = ''; });
     if ($('quarter')) $('quarter').value = '';
 
