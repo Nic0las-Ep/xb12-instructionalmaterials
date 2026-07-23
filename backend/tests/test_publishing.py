@@ -69,7 +69,11 @@ def _submission(materials, status="Approved", **extra):
         "status": status,
         "coursePrefix": "ENGL",
         "courseNumber": "1A",
+        "section": "01",
         "crn": "12345",
+        "respondentName": "Prof. Ada Lovelace",
+        "sectionXb12Code": "Y",
+        "sectionXb12Meaning": "Section does not meet no-cost or low-cost criteria",
         "materials": materials,
     }
     base.update(extra)
@@ -154,25 +158,63 @@ class ExtractionTests(unittest.TestCase):
         self.assertEqual(pairs, [])
 
 
+class CostCodeTests(unittest.TestCase):
+    def test_cost_code_labels(self):
+        self.assertEqual(ps.cost_code_label("E"), "ZTC")
+        self.assertEqual(ps.cost_code_label("C"), "ZTC")
+        self.assertEqual(ps.cost_code_label("D"), "LTC")
+        self.assertEqual(ps.cost_code_label("Y"), "Standard")
+        self.assertEqual(ps.cost_code_label("A"), "No Material")
+        self.assertEqual(ps.cost_code_label(""), "")
+
+
+class MaterialSnapshotTests(unittest.TestCase):
+    def test_snapshot_captures_isbn_url_price(self):
+        sub = _submission(
+            [
+                {"title": "Textbook", "ISBN": "9781947172517", "price": 120},
+                {"title": "Platform", "url": "https://platform.edu/course"},
+            ]
+        )
+        snap = ps.build_material_snapshot(sub)
+        self.assertEqual(len(snap), 2)
+        book = next(m for m in snap if m["isbn"])
+        self.assertEqual(book["isbn"], "9781947172517")
+        self.assertEqual(book["price"], 120)
+        platform = next(m for m in snap if m["url"])
+        self.assertEqual(platform["url"], "https://platform.edu/course")
+
+    def test_snapshot_normalizes_material_url(self):
+        sub = _submission([{"title": "P", "url": "HTTPS://Platform.edu/x/#top"}])
+        snap = ps.build_material_snapshot(sub)
+        self.assertEqual(snap[0]["url"], "https://platform.edu/x")
+
+
 class PublishTests(unittest.TestCase):
-    def test_publish_single_url_multiple_destinations(self):
+    def test_publish_one_row_per_destination(self):
         sub = _submission([{"url": "https://example.edu/a"}])
         table = FakeTable()
         result, err = ps.publish(sub, ["course-schedule", "bookstore"], "admin", table)
         self.assertIsNone(err)
         self.assertEqual(result["publishedCount"], 2)
         self.assertEqual(result["skippedDuplicateCount"], 0)
+        self.assertEqual(len(table.items), 2)
 
-    def test_publish_multiple_urls(self):
+    def test_published_row_carries_section_fields(self):
         sub = _submission(
-            [{"url": "https://example.edu/a"}, {"url": "https://example.edu/b"}]
+            [{"title": "T", "ISBN": "123", "price": 50, "url": "https://x.edu/a"}]
         )
         table = FakeTable()
-        result, err = ps.publish(sub, ["course-schedule"], "admin", table)
-        self.assertIsNone(err)
-        self.assertEqual(result["publishedCount"], 2)
+        ps.publish(sub, ["bookstore"], "admin", table)
+        row = table.items["sub-1#bookstore"]
+        self.assertEqual(row["section"], "01")
+        self.assertEqual(row["professor"], "Prof. Ada Lovelace")
+        self.assertEqual(row["costCode"], "Standard")
+        self.assertEqual(row["urls"], ["https://x.edu/a"])
+        self.assertEqual(row["materials"][0]["isbn"], "123")
+        self.assertEqual(row["materials"][0]["price"], 50)
 
-    def test_publish_twice_is_idempotent(self):
+    def test_publish_twice_refreshes_no_duplicate(self):
         sub = _submission([{"url": "https://example.edu/a"}])
         table = FakeTable()
         ps.publish(sub, ["course-schedule"], "admin", table)
@@ -180,64 +222,73 @@ class PublishTests(unittest.TestCase):
         self.assertIsNone(err)
         self.assertEqual(result["publishedCount"], 0)
         self.assertEqual(result["skippedDuplicateCount"], 1)
+        self.assertEqual(len(table.items), 1)  # still one row, refreshed in place
 
-    def test_publish_no_urls(self):
-        sub = _submission([{"title": "A", "ISBN": "123", "url": ""}])
+    def test_publish_textbook_without_url(self):
+        # A textbook with only an ISBN is still publishable (for the bookstore).
+        sub = _submission([{"title": "A", "ISBN": "9781947172517", "url": ""}])
+        table = FakeTable()
+        result, err = ps.publish(sub, ["bookstore"], "admin", table)
+        self.assertIsNone(err)
+        self.assertEqual(result["publishedCount"], 1)
+        self.assertEqual(result["publishedMaterialCount"], 1)
+        self.assertEqual(result["publishedUrlCount"], 0)
+
+    def test_publish_nothing_to_publish(self):
+        sub = _submission([])
         table = FakeTable()
         result, err = ps.publish(sub, ["course-schedule"], "admin", table)
         self.assertIsNone(result)
-        self.assertIn("no valid URLs", err)
+        self.assertIn("no materials", err.lower())
 
     def test_storage_failure_surfaced(self):
-        sub = _submission(
-            [{"url": "https://example.edu/a"}, {"url": "https://example.edu/b"}]
-        )
-        table = FakeTable(fail_after=1)  # first put ok, second raises
+        sub = _submission([{"url": "https://example.edu/a"}])
+        table = FakeTable(fail_after=0)  # first put raises
         result, err = ps.publish(sub, ["course-schedule"], "admin", table)
         self.assertIsNone(result)
         self.assertIn("Failed to write", err)
 
 
-class ReadGroupingTests(unittest.TestCase):
-    def test_group_rows_by_submission(self):
-        rows = [
-            {
-                "submissionId": "s1",
-                "destination": "course-schedule",
-                "normalizedUrl": "https://a.edu/1",
-                "coursePrefix": "ENGL",
-                "courseNumber": "1A",
-                "crn": "111",
-                "publishedAt": "2026-01-01T00:00:00Z",
-            },
-            {
-                "submissionId": "s1",
-                "destination": "course-schedule",
-                "normalizedUrl": "https://a.edu/2",
-                "coursePrefix": "ENGL",
-                "courseNumber": "1A",
-                "crn": "111",
-                "publishedAt": "2026-01-01T00:00:00Z",
-            },
-            {
-                "submissionId": "s2",
-                "destination": "course-schedule",
-                "normalizedUrl": "https://b.edu/1",
-                "coursePrefix": "BIOL",
-                "courseNumber": "10",
-                "crn": "222",
-                "publishedAt": "2026-02-01T00:00:00Z",
-            },
-        ]
-        pubs = pl.group_rows(rows)
-        self.assertEqual(len(pubs), 2)
-        # Newest first -> s2 (Feb) before s1 (Jan)
-        self.assertEqual(pubs[0]["submissionId"], "s2")
-        s1 = next(p for p in pubs if p["submissionId"] == "s1")
-        self.assertEqual(sorted(s1["urls"]), ["https://a.edu/1", "https://a.edu/2"])
+class ReadTests(unittest.TestCase):
+    def test_to_publication_maps_fields(self):
+        row = {
+            "publicationId": "s1#course-schedule",
+            "submissionId": "s1",
+            "coursePrefix": "ENGL",
+            "courseNumber": "1A",
+            "section": "02",
+            "crn": "111",
+            "professor": "Prof. X",
+            "costCode": "ZTC",
+            "xb12Code": "E",
+            "destination": "course-schedule",
+            "materials": [{"isbn": "123", "url": "", "price": 0}],
+            "urls": ["https://a.edu/1"],
+            "publishedAt": "2026-01-01T00:00:00Z",
+        }
+        pub = pl.to_publication(row)
+        self.assertEqual(pub["section"], "02")
+        self.assertEqual(pub["professor"], "Prof. X")
+        self.assertEqual(pub["costCode"], "ZTC")
+        self.assertEqual(pub["materials"][0]["isbn"], "123")
+        self.assertEqual(pub["urls"], ["https://a.edu/1"])
 
-    def test_group_rows_empty(self):
-        self.assertEqual(pl.group_rows([]), [])
+    def test_to_publication_legacy_normalized_url(self):
+        # Older rows stored a single normalizedUrl; surface it as urls[].
+        row = {"submissionId": "s1", "normalizedUrl": "https://a.edu/1", "publishedAt": "z"}
+        pub = pl.to_publication(row)
+        self.assertEqual(pub["urls"], ["https://a.edu/1"])
+
+    def test_to_publications_newest_first(self):
+        rows = [
+            {"submissionId": "s1", "publishedAt": "2026-01-01T00:00:00Z"},
+            {"submissionId": "s2", "publishedAt": "2026-02-01T00:00:00Z"},
+        ]
+        pubs = pl.to_publications(rows)
+        self.assertEqual(pubs[0]["submissionId"], "s2")
+
+    def test_to_publications_empty(self):
+        self.assertEqual(pl.to_publications([]), [])
 
 
 if __name__ == "__main__":

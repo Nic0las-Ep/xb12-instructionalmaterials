@@ -7,13 +7,16 @@ more mock destination pages (Course Schedule, Bookstore, MIS Reporting).
 Design notes:
   * Approval is re-validated in the backend - the disabled frontend button is
     only a convenience, never the authorization.
-  * Publishing is idempotent. Each (submissionId, destination, normalizedUrl)
-    becomes one row in the PublishedLinks-index table keyed by a deterministic
-    id. Re-publishing the same submission skips rows that already exist
-    (counted as skippedDuplicateCount) instead of creating duplicates.
-  * Only minimal, non-private data is stored per row (course prefix/number,
-    CRN, the URLs, timestamps). No admin notes, professor PII, survey answers,
-    or embeddings are ever published.
+  * Publishing is idempotent. Each (submissionId, destination) becomes ONE row
+    in the PublishedLinks-index table keyed by a deterministic id
+    (``submissionId#destination``). Re-publishing the same submission refreshes
+    that row in place instead of creating duplicates (counted as
+    skippedDuplicateCount).
+  * Each row carries a small snapshot the destination pages need: course
+    prefix/number, section, CRN, professor name, the section cost code
+    (ZTC/LTC/Standard), the XB12 MIS code, the validated resource URLs, and a
+    per-material snapshot (title, ISBN, platform URL, price). No admin notes,
+    survey answers, or embedding vectors are ever published.
 
 The core (`publish`, `extract_publishable_urls`, `validate_destinations`) is
 kept free of module-level AWS state so it can be unit-tested with a fake table.
@@ -112,76 +115,148 @@ def validate_destinations(raw):
     return valid, None
 
 
-def _row_id(submission_id, destination, normalized_url):
-    return f"{submission_id}#{destination}#{normalized_url}"
+# Section cost code (friendly) derived from the XB12 letter code.
+#   E/F/G/C -> ZTC (zero textbook cost)   D -> LTC (low textbook cost)
+#   Y -> Standard                         A -> No Material
+_COST_CODE_LABEL = {
+    "E": "ZTC", "F": "ZTC", "G": "ZTC", "C": "ZTC",
+    "D": "LTC",
+    "Y": "Standard",
+    "A": "No Material",
+}
+
+
+def cost_code_label(xb12_code):
+    """Return the friendly ZTC/LTC/Standard/No Material label for an XB12 code."""
+    return _COST_CODE_LABEL.get((xb12_code or "").strip().upper(), "")
+
+
+def _row_id(submission_id, destination):
+    return f"{submission_id}#{destination}"
+
+
+def _professor_name(submission):
+    name = (submission.get("respondentName") or "").strip()
+    if name and name.lower() != "unknown":
+        return name
+    first = (submission.get("professorFirstName") or "").strip()
+    last = (submission.get("professorLastName") or "").strip()
+    return (first + " " + last).strip()
+
+
+def build_material_snapshot(submission):
+    """
+    Build the minimal per-material snapshot the Bookstore page needs:
+    title, ISBN (textbooks), platform URL (validated http/https), and price.
+
+    Only materials that carry an ISBN, a valid URL, a price, or a title are
+    included. Nothing sensitive (admin notes, survey answers) is copied.
+    """
+    snapshot = []
+    for material in submission.get("materials") or []:
+        if not isinstance(material, dict):
+            continue
+        isbn = material.get("ISBN") or material.get("isbn") or ""
+        raw_url = (
+            material.get("url")
+            or material.get("oerUrl")
+            or material.get("resourceUrl")
+            or material.get("platformUrl")
+            or material.get("link")
+            or ""
+        )
+        normalized = urlutil.normalize_url(raw_url) if raw_url else None
+        entry = {
+            "title": material.get("title") or "",
+            "isbn": str(isbn) if isbn else "",
+            "url": normalized or "",
+            "materialType": material.get("materialType") or "",
+            "costStatus": material.get("costStatus") or "",
+        }
+        price = material.get("price")
+        if price not in (None, ""):
+            entry["price"] = price  # Decimal (from DynamoDB) or numeric string
+        if entry["isbn"] or entry["url"] or "price" in entry or entry["title"]:
+            snapshot.append(entry)
+    return snapshot
 
 
 def publish(submission, destinations, published_by, table, now=None):
     """
-    Write one idempotent row per (destination, URL) for an approved submission.
+    Write ONE idempotent row per (submission, destination) for an approved
+    submission and return ``(result_dict, error_message)``.
 
-    Returns ``(result_dict, error_message)``. On success ``error_message`` is
-    ``None`` and ``result_dict`` contains success / publishedCount /
-    skippedDuplicateCount / destinations / publishedAt / publishedUrlCount.
+    On success ``error_message`` is ``None`` and ``result_dict`` contains
+    success / publishedCount / skippedDuplicateCount / publishedMaterialCount /
+    publishedUrlCount / destinations / publishedAt.
 
-    Idempotency: each row uses a deterministic id and a conditional put that
-    fails (ConditionalCheckFailed) when the row already exists; such rows are
-    counted as skipped duplicates rather than re-created.
+    Idempotency: the row id is deterministic (``submissionId#destination``).
+    The first write for a destination uses a conditional put (counts as
+    published); if the row already exists the snapshot is refreshed in place
+    (counts as a skipped duplicate) so re-publishing never creates duplicates.
     """
+    materials = build_material_snapshot(submission)
     url_pairs = extract_publishable_urls(submission)
-    if not url_pairs:
-        return None, "This submission contains no valid URLs to publish."
+    urls = [pair["normalizedUrl"] for pair in url_pairs]
+    if not materials and not urls:
+        return None, "This submission has no materials to publish."
 
     timestamp = now or (datetime.datetime.utcnow().isoformat() + "Z")
     submission_id = submission.get("id")
     course_prefix = submission.get("coursePrefix") or submission.get("department") or ""
     course_number = submission.get("courseNumber") or ""
+    section = submission.get("section") or ""
     crn = submission.get("crn") or submission.get("CRN") or ""
-    # Section-level XB12 INSTRUCTIONAL-MATERIAL-COST code (the value reported to
-    # MIS). Included so the MIS destination can render it as a data element.
+    professor = _professor_name(submission)
+    # Section-level XB12 INSTRUCTIONAL-MATERIAL-COST code + friendly label.
     xb12_code = submission.get("sectionXb12Code") or ""
     xb12_meaning = submission.get("sectionXb12Meaning") or ""
+    cost_code = cost_code_label(xb12_code)
 
     published_count = 0
     skipped_count = 0
 
     for destination in destinations:
-        for pair in url_pairs:
-            normalized = pair["normalizedUrl"]
-            item = {
-                "id": _row_id(submission_id, destination, normalized),
-                "publicationId": str(uuid.uuid4()),
-                "submissionId": submission_id,
-                "destination": destination,
-                "normalizedUrl": normalized,
-                "originalUrl": pair["originalUrl"],
-                "coursePrefix": course_prefix,
-                "courseNumber": course_number,
-                "crn": crn,
-                "xb12Code": xb12_code,
-                "xb12Meaning": xb12_meaning,
-                "publishedAt": timestamp,
-                "publishedBy": published_by,
-            }
-            try:
-                table.put_item(
-                    Item=item,
-                    ConditionExpression="attribute_not_exists(id)",
-                )
-                published_count += 1
-            except ClientError as exc:
-                if exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
-                    skipped_count += 1
-                else:
-                    # Storage failure - surface it without leaking internals.
+        item = {
+            "id": _row_id(submission_id, destination),
+            "publicationId": _row_id(submission_id, destination),
+            "submissionId": submission_id,
+            "destination": destination,
+            "coursePrefix": course_prefix,
+            "courseNumber": course_number,
+            "section": section,
+            "crn": crn,
+            "professor": professor,
+            "costCode": cost_code,
+            "xb12Code": xb12_code,
+            "xb12Meaning": xb12_meaning,
+            "materials": materials,
+            "urls": urls,
+            "publishedAt": timestamp,
+            "publishedBy": published_by,
+        }
+        try:
+            table.put_item(Item=item, ConditionExpression="attribute_not_exists(id)")
+            published_count += 1
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code")
+            if code == "ConditionalCheckFailedException":
+                # Row exists - refresh its snapshot in place (no duplicate).
+                try:
+                    table.put_item(Item=item)
+                except ClientError:
                     return None, "Failed to write one or more publication records."
+                skipped_count += 1
+            else:
+                return None, "Failed to write one or more publication records."
 
     result = {
         "success": True,
         "submissionId": submission_id,
         "publishedCount": published_count,
         "skippedDuplicateCount": skipped_count,
-        "publishedUrlCount": len(url_pairs),
+        "publishedMaterialCount": len(materials),
+        "publishedUrlCount": len(urls),
         "publishedAt": timestamp,
         "destinations": list(destinations),
     }
@@ -215,11 +290,11 @@ def handler(event, context):
 
     result, error = publish(submission, destinations, published_by, _published)
     if error:
-        # No URLs / storage failure. "No valid URLs" is a client-side condition;
-        # a storage failure is a server condition.
-        if "no valid URLs" in error.lower():
-            return bad_request(error)
-        return server_error(error)
+        # A storage failure is a server condition; anything else (e.g. nothing
+        # to publish) is a client condition.
+        if error.startswith("Failed to write"):
+            return server_error(error)
+        return bad_request(error)
     return ok(result)
 
 

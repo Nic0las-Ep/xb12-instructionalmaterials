@@ -38,7 +38,7 @@
     .demo-nav a:hover { background: var(--cs-bg); }
     .demo-nav a[aria-current="page"] { background: var(--cs-primary); color: #fff; }
 
-    .page { max-width: 1000px; margin: 0 auto; padding: 1.6rem; }
+    .page { max-width: 960px; margin: 0 auto; padding: 1.6rem; }
     .intro { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.2rem; }
 
     .state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
@@ -48,27 +48,30 @@
       animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
-    .course-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-      overflow: hidden; box-shadow: 0 1px 3px rgba(8,145,178,0.08); display: flex; flex-direction: column; }
-    .course-card-head { background: var(--cs-bg); border-bottom: 1px solid var(--border);
-      padding: 0.85rem 1rem; }
-    .course-code { font-size: 1.05rem; font-weight: 800; color: var(--cs-deep); }
-    .course-meta { font-size: 0.78rem; color: var(--muted); margin-top: 3px; display: flex; gap: 0.75rem; flex-wrap: wrap; }
-    .course-meta .crn-badge { background: var(--cs-primary); color: #fff; border-radius: 4px; padding: 1px 7px; font-weight: 600; }
-    .links { padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
-    .links-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; }
-    .link-item { display: flex; align-items: flex-start; gap: 7px; font-size: 0.85rem; }
-    .link-item a { color: var(--cs-accent); text-decoration: none; word-break: break-all; }
-    .link-item a:hover { text-decoration: underline; }
-    .link-item::before { content: "🔗"; font-size: 0.8rem; line-height: 1.4; }
+    .row-count { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    thead th { background: var(--cs-deep); color: #fff; text-align: left; padding: 0.65rem 0.9rem;
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    tbody td { padding: 0.65rem 0.9rem; border-top: 1px solid var(--border); }
+    tbody tr:nth-child(even) { background: #f7fdff; }
+    .course-code { font-weight: 800; color: var(--cs-deep); }
+    .crn-badge { background: var(--cs-primary); color: #fff; border-radius: 4px; padding: 1px 7px; font-weight: 600; font-size: 0.82rem; }
+
+    /* Cost-code badge (ZTC / LTC / Standard / No Material) */
+    .code-badge { display: inline-block; font-weight: 700; font-size: 0.74rem; letter-spacing: 0.03em;
+      padding: 3px 10px; border-radius: 999px; border: 1px solid transparent; }
+    .code-ztc { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .code-ltc { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+    .code-standard { background: #e2e8f0; color: #334155; border-color: #cbd5e1; }
+    .code-none { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
     footer { text-align: center; color: var(--muted); font-size: 0.78rem; padding: 1.5rem; }
   </style>
 </head>
 <body>
   <header class="site-header" role="banner">
     <h1>Course Schedule — Instructional Material Links</h1>
-    <p>Approved instructional-material links students can review before registration.</p>
+    <p>Approved sections and their instructional-material cost code, before registration.</p>
   </header>
 
   <nav class="demo-nav" aria-label="Demo navigation">
@@ -82,14 +85,15 @@
 
   <main class="page" role="main">
     <p class="intro">
-      Published links appear newest first, grouped by course section. This is a demonstration
-      mockup and is not connected to a real course schedule system.
+      Approved sections appear newest first with their instructional-material cost code
+      (<strong>ZTC</strong> zero-cost, <strong>LTC</strong> low-cost, or <strong>Standard</strong>).
+      This is a demonstration mockup and is not connected to a real course schedule system.
     </p>
 
     <div id="content" aria-live="polite">
       <div class="state" id="loading">
         <div class="spinner" aria-hidden="true"></div>
-        Loading approved instructional-material links…
+        Loading approved sections…
       </div>
     </div>
   </main>
@@ -103,39 +107,43 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-    function fmtDate(iso) {
-      if (!iso) return '';
-      const d = new Date(iso);
-      if (isNaN(d)) return '';
-      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+    function codeBadge(code) {
+      const c = String(code || '').trim();
+      const cls = c === 'ZTC' ? 'code-ztc'
+        : c === 'LTC' ? 'code-ltc'
+        : c === 'Standard' ? 'code-standard'
+        : 'code-none';
+      return `<span class="code-badge ${cls}">${esc(c || 'N/A')}</span>`;
     }
 
-    function renderCards(publications) {
+    function render(publications) {
       const content = document.getElementById('content');
       if (!publications.length) {
-        content.innerHTML = '<div class="state">No approved instructional-material links have been published.</div>';
+        content.innerHTML = '<div class="state">No approved sections have been published.</div>';
         return;
       }
-      const cards = publications.map(p => {
-        const code = [p.coursePrefix, p.courseNumber].filter(Boolean).map(esc).join(' ') || 'Course';
-        const crn = p.crn ? `<span class="crn-badge">CRN ${esc(p.crn)}</span>` : '';
-        const when = fmtDate(p.publishedAt);
-        const links = (p.urls || []).map(u =>
-          `<div class="link-item"><a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a></div>`
-        ).join('') || '<div class="link-item">No links.</div>';
+      const body = publications.map(p => {
+        const code = [p.coursePrefix, p.courseNumber].filter(Boolean).map(esc).join(' ') || '—';
         return `
-          <article class="course-card">
-            <div class="course-card-head">
-              <div class="course-code">${code}</div>
-              <div class="course-meta">${crn}${when ? `<span>Published ${esc(when)}</span>` : ''}</div>
-            </div>
-            <div class="links">
-              <div class="links-label">Approved resource links</div>
-              ${links}
-            </div>
-          </article>`;
+          <tr>
+            <td class="course-code">${code}</td>
+            <td>${esc(p.section) || '—'}</td>
+            <td>${esc(p.professor) || '—'}</td>
+            <td>${p.crn ? `<span class="crn-badge">${esc(p.crn)}</span>` : '—'}</td>
+            <td>${codeBadge(p.costCode)}</td>
+          </tr>`;
       }).join('');
-      content.innerHTML = `<div class="course-grid">${cards}</div>`;
+      content.innerHTML = `
+        <div class="row-count">${publications.length} section${publications.length === 1 ? '' : 's'}</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Class</th><th>Section</th><th>Professor</th><th>CRN</th><th>Cost Code</th></tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>`;
     }
 
     async function load() {
@@ -143,9 +151,9 @@
       try {
         await API.initConfig();
         const data = await API.getPublishedLinks('course-schedule');
-        renderCards(Array.isArray(data.publications) ? data.publications : []);
+        render(Array.isArray(data.publications) ? data.publications : []);
       } catch (err) {
-        content.innerHTML = `<div class="state error">Unable to load published links. ${esc(err.message || '')}</div>`;
+        content.innerHTML = `<div class="state error">Unable to load published sections. ${esc(err.message || '')}</div>`;
       }
     }
     document.addEventListener('DOMContentLoaded', load);

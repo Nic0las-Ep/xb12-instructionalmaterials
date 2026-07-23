@@ -287,6 +287,7 @@ def handler(event, context):
                 "title": a.get("title"),
                 "ISBN": a.get("ISBN"),
                 "url": a.get("url"),
+                "price": a.get("price"),
                 "xb12Code": a.get("xb12Code"),
                 "costStatus": a.get("costStatus"),
                 "materialType": a.get("materialType"),

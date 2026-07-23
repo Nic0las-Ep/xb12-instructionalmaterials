@@ -1,14 +1,14 @@
 """
 GET /published-links?destination=course-schedule
 
-Return the links that have been published to a given mock destination. Rows in
-PublishedLinks-index are stored one-per-URL for idempotency; this endpoint
-groups them by source submission so each course/section appears once with its
-list of URLs, newest first.
+Return the publications for a given mock destination, newest first. Each row in
+PublishedLinks-index is one publication (one submission per destination) and
+carries the small snapshot the destination pages render: course prefix/number,
+section, CRN, professor, section cost code (ZTC/LTC/Standard), XB12 code, the
+resource URLs, and a per-material snapshot (title, ISBN, platform URL, price).
 
-Only the minimal, non-private publication fields are returned. Professor PII,
-admin notes, survey answers, and embeddings are never stored here and so can
-never be exposed.
+Only these display fields are returned. Admin notes, survey answers, and
+embedding vectors are never stored here and so can never be exposed.
 """
 
 import os
@@ -49,50 +49,35 @@ def _query_rows(destination):
     return items
 
 
-def group_rows(rows):
-    """
-    Group per-URL rows into one publication per submission (within a
-    destination). Returns publications newest-first. Each publication:
-      { publicationId, submissionId, coursePrefix, courseNumber, crn,
-        destination, urls: [...], publishedAt }
-    """
-    groups = {}
-    order = []
-    for row in rows:
-        sub_id = row.get("submissionId")
-        if sub_id not in groups:
-            groups[sub_id] = {
-                "publicationId": sub_id,
-                "submissionId": sub_id,
-                "coursePrefix": row.get("coursePrefix", ""),
-                "courseNumber": row.get("courseNumber", ""),
-                "crn": row.get("crn", ""),
-                "xb12Code": row.get("xb12Code", ""),
-                "xb12Meaning": row.get("xb12Meaning", ""),
-                "destination": row.get("destination", ""),
-                "urls": [],
-                "_seen": set(),
-                "publishedAt": row.get("publishedAt", ""),
-            }
-            order.append(sub_id)
-        group = groups[sub_id]
-        url = row.get("normalizedUrl")
-        if url and url not in group["_seen"]:
-            group["_seen"].add(url)
-            group["urls"].append(url)
-        # Keep the most recent timestamp for the group.
-        if row.get("publishedAt", "") > group["publishedAt"]:
-            group["publishedAt"] = row["publishedAt"]
+def to_publication(row):
+    """Map a stored row to the public publication shape (display fields only)."""
+    urls = row.get("urls") or []
+    # Back-compat: older rows stored a single normalizedUrl instead of a list.
+    if not urls and row.get("normalizedUrl"):
+        urls = [row["normalizedUrl"]]
+    return {
+        "publicationId": row.get("publicationId") or row.get("submissionId", ""),
+        "submissionId": row.get("submissionId", ""),
+        "coursePrefix": row.get("coursePrefix", ""),
+        "courseNumber": row.get("courseNumber", ""),
+        "section": row.get("section", ""),
+        "crn": row.get("crn", ""),
+        "professor": row.get("professor", ""),
+        "costCode": row.get("costCode", ""),
+        "xb12Code": row.get("xb12Code", ""),
+        "xb12Meaning": row.get("xb12Meaning", ""),
+        "destination": row.get("destination", ""),
+        "materials": row.get("materials") or [],
+        "urls": urls,
+        "publishedAt": row.get("publishedAt", ""),
+    }
 
-    publications = []
-    for sub_id in order:
-        group = groups[sub_id]
-        group.pop("_seen", None)
-        publications.append(group)
-    # Rows arrive newest-first, but a group's chosen publishedAt may be newer;
-    # sort defensively so the response is strictly newest-first.
-    publications.sort(key=lambda p: p.get("publishedAt", ""), reverse=True)
-    return publications
+
+def to_publications(rows):
+    """Map rows to publications, newest first."""
+    pubs = [to_publication(r) for r in rows]
+    pubs.sort(key=lambda p: p.get("publishedAt", ""), reverse=True)
+    return pubs
 
 
 def handler(event, context):
@@ -111,7 +96,7 @@ def handler(event, context):
     except Exception as exc:  # noqa: BLE001
         return server_error("Failed to load published links.", detail=str(exc))
 
-    publications = group_rows(rows)
+    publications = to_publications(rows)
     return ok(
         {
             "count": len(publications),

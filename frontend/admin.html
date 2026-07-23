@@ -514,6 +514,7 @@
       max-height: 180px; overflow: auto; }
     .publish-urls a { color: var(--info); font-size: 0.83rem; word-break: break-all; }
     .publish-urls .none { color: var(--danger); font-size: 0.83rem; }
+    .publish-urls .pub-mat { font-size: 0.83rem; line-height: 1.4; padding: 2px 0; }
     .publish-dests { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.75rem; }
     .publish-dests-label { font-size: 0.78rem; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.04em; }
@@ -873,7 +874,7 @@
 
       <!-- Confirmation panel (hidden until Publish is clicked) -->
       <div class="publish-confirm" id="publish-confirm" hidden>
-        <div class="publish-confirm-title">Confirm the links about to be published</div>
+        <div class="publish-confirm-title">Confirm the materials about to be published</div>
         <div class="publish-urls" id="publish-urls"></div>
         <div class="publish-dests">
           <div class="publish-dests-label">Destinations</div>
@@ -1368,17 +1369,29 @@ function openPublishPanel() {
   result.textContent = '';
   result.className = 'publish-result';
 
+  // Preview the materials that will be published: textbook ISBNs and/or
+  // learning-platform URLs. A textbook with only an ISBN is publishable too.
   const urls = extractSubmissionUrls(s);
-  if (urls.length === 0) {
-    urlBox.innerHTML = '<div class="none">No valid URLs were found in this submission. There is nothing to publish.</div>';
+  const materials = (s.materials || []).filter(m =>
+    m && ((m.ISBN || m.isbn) || m.url || (m.price !== undefined && m.price !== null && m.price !== ''))
+  );
+  const hasSomething = materials.length > 0 || urls.length > 0;
+
+  if (!hasSomething) {
+    urlBox.innerHTML = '<div class="none">This submission has no textbooks or links to publish.</div>';
   } else {
-    urlBox.innerHTML = urls.map(u =>
-      `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a>`
-    ).join('');
+    urlBox.innerHTML = materials.map(m => {
+      const isbn = m.ISBN || m.isbn;
+      const bits = [];
+      if (isbn) bits.push(`ISBN ${esc(isbn)}`);
+      if (m.url) bits.push(`<a href="${esc(m.url)}" target="_blank" rel="noopener noreferrer">${esc(m.url)}</a>`);
+      const title = m.title ? `<strong>${esc(m.title)}</strong>` : '<em>Untitled material</em>';
+      return `<div class="pub-mat">${title}${bits.length ? ' — ' + bits.join(' · ') : ''}</div>`;
+    }).join('');
   }
   // Reset destination checkboxes to all-checked
   document.querySelectorAll('.pub-dest-cb').forEach(cb => { cb.checked = true; });
-  document.getElementById('btn-confirm-publish').disabled = urls.length === 0;
+  document.getElementById('btn-confirm-publish').disabled = !hasSomething;
   panel.hidden = false;
 }
 

@@ -62,9 +62,9 @@ OpenSearch Serverless (resource search) · Amazon Bedrock (embeddings)
 
 | Page | Destination id | Purpose |
 | --- | --- | --- |
-| `course-schedule.html` | `course-schedule` | Course-catalog view of approved links, grouped by course, newest first. |
-| `bookstore.html` | `bookstore` | Bookstore-style cards of approved course-material links. |
-| `mis-reporting.html` | `mis-reporting` | Compliance report table (Course, CRN, URL, date, submission id) with Course/CRN filters. |
+| `course-schedule.html` | `course-schedule` | Section table: class, section, professor, CRN, and cost code (ZTC/LTC/Standard). |
+| `bookstore.html` | `bookstore` | Per-material table: class, professor, CRN, section, textbook ISBN, learning-platform URL, and price (with Class/CRN filters). |
+| `mis-reporting.html` | `mis-reporting` | Compliance report table (Course, CRN, XB12 data-entry code, URL, date, submission id) with Course/CRN filters. |
 
 Each page escapes all backend text, opens links with
 `target="_blank" rel="noopener noreferrer"`, and has loading / empty / error
@@ -90,15 +90,19 @@ Response:
   "submissionId": "…",
   "publishedCount": 3,
   "skippedDuplicateCount": 0,
+  "publishedMaterialCount": 2,
   "publishedUrlCount": 1,
   "publishedAt": "2026-07-22T00:00:00Z",
   "destinations": ["course-schedule", "bookstore", "mis-reporting"]
 }
 ```
 
-The backend rejects the request (400) when the submission is not `Approved`
-("Approve this submission before publishing."), when no valid destination is
-selected, or when the submission has no valid URLs. Unknown submission → 404.
+`publishedCount` is the number of new (submission, destination) rows written;
+re-publishing refreshes existing rows in place and counts them under
+`skippedDuplicateCount`. The backend rejects the request (400) when the
+submission is not `Approved` ("Approve this submission before publishing."),
+when no valid destination is selected, or when the submission has no materials
+to publish. Unknown submission → 404.
 
 ### `GET /published-links?destination=course-schedule`
 
@@ -114,38 +118,65 @@ selected, or when the submission has no valid URLs. Unknown submission → 404.
       "submissionId": "…",
       "coursePrefix": "ENGL",
       "courseNumber": "1A",
+      "section": "01",
       "crn": "12345",
+      "professor": "Prof. Ada Lovelace",
+      "costCode": "ZTC",
+      "xb12Code": "E",
+      "xb12Meaning": "…",
       "destination": "course-schedule",
-      "urls": ["https://example.edu/oer-resource"],
+      "materials": [
+        { "title": "…", "isbn": "9781947172517", "url": "", "price": 0, "materialType": "textbook", "costStatus": "ZTC" },
+        { "title": "…", "isbn": "", "url": "https://platform.edu/course", "materialType": "platform", "costStatus": "STANDARD" }
+      ],
+      "urls": ["https://platform.edu/course"],
       "publishedAt": "…"
     }
   ]
 }
 ```
 
-Only minimal, non-private fields are returned — never professor PII, admin
-notes, survey answers, or embeddings.
+Only these display fields are returned — never admin notes, survey answers, or
+embeddings. (Professor name is included because the destination pages display
+it.)
 
 ---
 
 ## DynamoDB: `PublishedLinks-index`
 
-One row per **(submission, destination, normalized URL)** for idempotency.
+One row per **(submission, destination)** — a small snapshot of what each
+destination page renders.
 
 | Field | Notes |
 | --- | --- |
-| `id` (PK) | Deterministic dedup key: `submissionId#destination#normalizedUrl`. |
-| `publicationId` | UUID for the row. |
+| `id` (PK) | Deterministic key: `submissionId#destination`. |
+| `publicationId` | Same as `id`. |
 | `submissionId` | Source submission id. |
 | `destination` | `course-schedule` \| `bookstore` \| `mis-reporting`. |
-| `normalizedUrl` / `originalUrl` | The published link. |
-| `coursePrefix` / `courseNumber` / `crn` | Minimal course context. |
+| `coursePrefix` / `courseNumber` / `section` / `crn` | Section identity. |
+| `professor` | Respondent name (shown on the destination pages). |
+| `costCode` | `ZTC` \| `LTC` \| `Standard` \| `No Material` (from the XB12 code). |
+| `xb12Code` / `xb12Meaning` | XB12 INSTRUCTIONAL-MATERIAL-COST (for MIS). |
+| `materials` | Per-material snapshot: `{ title, isbn, url, price, materialType, costStatus }`. |
+| `urls` | Validated, de-duplicated resource URLs (used by MIS). |
 | `publishedAt` | ISO-8601 timestamp. |
 | `publishedBy` | `admin` (or the authenticated admin identity, when Cognito is added). |
 
 **GSI `destination-index`** — PK `destination`, SK `publishedAt` — lets the read
-endpoint fetch a destination's links newest-first. The read endpoint groups the
-per-URL rows by submission so each course section appears once with its `urls[]`.
+endpoint fetch a destination's publications newest-first. Each row is already
+one publication, so no grouping is needed.
+
+### What each page shows
+
+- **Course Schedule** — class, section, professor, CRN, and the cost code.
+- **Bookstore** — one row per material: class, professor, CRN, section, the
+  textbook **ISBN** and the learning-platform **URL** in separate columns, and
+  the **price**.
+- **MIS Reporting** — Course, CRN, XB12 code (data-entry column), published URL,
+  date, and source submission id.
+
+> Price is captured on submission going forward; submissions created before this
+> was added show no price until they are re-submitted through the form.
 
 ---
 
@@ -167,11 +198,11 @@ Each candidate is:
 
 ## Duplicate prevention (idempotency)
 
-Each `(submissionId, destination, normalizedUrl)` maps to a deterministic `id`.
-Rows are written with a conditional put (`attribute_not_exists(id)`); a row that
-already exists raises `ConditionalCheckFailed` and is counted as a skipped
-duplicate rather than re-created. Re-publishing the same submission is therefore
-safe and never produces duplicate links.
+Each `(submissionId, destination)` maps to a deterministic `id`. The first write
+for a destination uses a conditional put (`attribute_not_exists(id)`) and counts
+as published; if the row already exists it is refreshed in place and counted as
+a skipped duplicate. Re-publishing the same submission is therefore safe, never
+produces duplicates, and picks up any edits to the submission.
 
 ---
 
@@ -182,8 +213,9 @@ controls:
 
 - Labeled **Publish Approved Links**; disabled unless the submission status is
   `Approved` (otherwise it shows "Approve this submission before publishing.").
-- Clicking it opens a confirmation panel that previews the valid URLs found in
-  the submission and destination checkboxes (all three selected by default).
+- Clicking it opens a confirmation panel that previews the materials found in
+  the submission (textbook ISBNs and learning-platform URLs) and destination
+  checkboxes (all three selected by default).
 - On confirm it disables the button (preventing double-submit), calls the
   publish route, and reports success with the count, destinations, and
   timestamp.
