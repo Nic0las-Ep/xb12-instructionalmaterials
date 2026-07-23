@@ -47,6 +47,12 @@ def _create(event):
     if not course_prefix or not course_number:
         return bad_request("'coursePrefix' and 'courseNumber' are required.")
 
+    # A CRN identifies the section; it is required so every material is tied to
+    # a specific section (no CRN-less rows in Textbook History).
+    crn = (body.get("crn") or body.get("CRN") or "").strip()
+    if not crn:
+        return bad_request("A CRN is required to add materials to a course.")
+
     isbn = (body.get("ISBN") or body.get("isbn") or "").strip()
     url = (body.get("url") or "").strip()
     if not isbn and not url and not body.get("resourceId"):

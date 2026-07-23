@@ -181,8 +181,14 @@
     clearGlobalError();
     const prefix = $('course-prefix').value.trim().toUpperCase();
     const number = $('course-number').value.trim();
+    const crn = $('crn').value.trim();
     if (!prefix || !number) {
       showGlobalError('Please enter both a course prefix and course number.');
+      return;
+    }
+    if (!crn) {
+      showGlobalError('Please enter a CRN — it identifies the section and is required to add materials.');
+      $('crn').focus();
       return;
     }
     currentCourse = {
