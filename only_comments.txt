@@ -1,0 +1,392 @@
+================================================================================
+  XB12 INSTRUCTIONAL-MATERIALS REGISTRY — HOW THE BACKEND WORKS
+  Step-by-step walkthrough: from the user's action to every database and back
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+  INFRASTRUCTURE OVERVIEW (what is deployed and how it is wired together)
+────────────────────────────────────────────────────────────────────────────────
+
+  The system is deployed on AWS using CDK (infra/xb12_stack/xb12_stack.py).
+
+  AWS services involved:
+    - CloudFront       → CDN that serves the static frontend to the browser
+    - S3 (private)     → stores the HTML/CSS/JS files; only CloudFront can read it
+    - API Gateway      → the single public HTTPS endpoint for all API calls
+    - AWS Lambda       → four Python functions, each handling one route
+    - DynamoDB         → two tables used as the primary source of truth
+    - Amazon OpenSearch Serverless (AOSS) → search engine with vector support
+    - Amazon Bedrock   → AI service that generates text embeddings (vectors)
+
+  DynamoDB tables:
+    - Resource-index          → the catalog of all textbooks and platforms
+    - Textbookhistory-index   → tracks which resources are adopted per course
+
+  All four Lambda functions share the same execution role and a common
+  code layer (backend/layer/python/xb12_common/) that contains shared helpers
+  for AOSS, embeddings, XB12 classification, ISBN registries, and HTTP responses.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  STEP 0 — THE USER OPENS THE APP
+────────────────────────────────────────────────────────────────────────────────
+
+  1. The browser loads the URL from CloudFront.
+  2. CloudFront fetches index.html, styles.css, app.js, and api.js from the
+     private S3 bucket (the user never touches S3 directly).
+  3. app.js calls API.initConfig(), which fetches /config.json from the same
+     S3 bucket. That file is generated at deploy time by CDK and contains
+     the API Gateway base URL so the frontend knows where to send requests.
+  4. The form is now ready. The user has not yet touched any database.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  STEP 1 — PROFESSOR ENTERS THE COURSE (frontend only, no API call)
+────────────────────────────────────────────────────────────────────────────────
+
+  The professor fills in:
+    - Course prefix (e.g. ENGL)
+    - Course number (e.g. 1A)
+    - Quarter and year
+    - Their first and last name
+
+  app.js saves this as a JavaScript object called "currentCourse" in memory.
+  No API call is made yet. Once the course is loaded the UI makes one API
+  call to list any materials already adopted for that course (see Step 2).
+
+
+────────────────────────────────────────────────────────────────────────────────
+  STEP 2 — LIST CURRENT ADOPTIONS  (GET /course-resources)
+────────────────────────────────────────────────────────────────────────────────
+
+  BROWSER → API GATEWAY → Lambda: course_resources.handler
+                                ↓
+                           DynamoDB: Textbookhistory-index (scan with filter)
+                                ↓
+                     LAMBDA → API GATEWAY → BROWSER
+
+  What happens in detail:
+
+  a) api.js sends:
+       GET /course-resources?coursePrefix=ENGL&courseNumber=1A&quarter=Fall&year=2025
+
+  b) API Gateway receives the request and triggers the CourseResourcesFn Lambda.
+
+  c) The Lambda handler (course_resources.py) reads the HTTP method from the
+     event. It's a GET, so it calls _list().
+
+  d) _list() extracts coursePrefix, courseNumber, and optionally quarter/year
+     from the query string. It builds a DynamoDB FilterExpression and does a
+     full table Scan on Textbookhistory-index. Pagination is handled: if
+     DynamoDB returns a LastEvaluatedKey the loop continues until all matching
+     rows are collected.
+
+  e) The Lambda returns a JSON response:
+       { "count": N, "adoptions": [ ...rows from DynamoDB... ] }
+
+  f) The frontend renders each adoption as a card showing the title, type,
+     ISBN or URL, and the XB12 badge (color-coded letter code).
+
+
+────────────────────────────────────────────────────────────────────────────────
+  STEP 3A — SEARCH FOR AN EXISTING RESOURCE  (GET /resources/search)
+────────────────────────────────────────────────────────────────────────────────
+
+  BROWSER → API GATEWAY → Lambda: search_resources.handler
+                                ↓
+                    (optional) Bedrock: Titan Text Embeddings v2
+                                ↓
+                    Amazon OpenSearch Serverless (AOSS)
+                                ↓
+                     LAMBDA → API GATEWAY → BROWSER
+
+  What happens in detail:
+
+  a) The professor types a query (e.g. "Biology") and optional filters
+     (XB12 code, material type, subject). api.js sends:
+       GET /resources/search?q=Biology&materialType=textbook
+
+  b) API Gateway triggers the SearchResourcesFn Lambda.
+
+  c) search_resources.py extracts the query and filters.
+
+  d) LEXICAL PATH (tried first):
+     The Lambda builds an OpenSearch bool query with two "should" clauses:
+       - phrase_prefix match on title and author (handles partial words)
+       - fuzzy match on title and author (handles typos)
+     Any active filters (xb12Code, materialType, subject, classNumber) are
+     added as "filter" clauses (exact or wildcard, depending on field type).
+     The query is sent to AOSS via AossClient.search().
+
+  e) SEMANTIC FALLBACK (if lexical returns zero results):
+     If nothing matched lexically, the Lambda calls Bedrock:
+       bedrock-runtime.invoke_model("amazon.titan-embed-text-v2:0")
+     Bedrock returns a 1024-dimensional floating-point vector representing
+     the meaning of the query text. This vector is sent to OpenSearch as
+     a k-NN query against the "embedding" field. Results below the minimum
+     cosine-similarity score (0.37) are filtered out, so irrelevant noise
+     is excluded. This path catches synonyms and unusual phrasings that
+     lexical search would miss.
+
+  f) The raw embedding vector is stripped from the results before they are
+     returned to the browser. Each resource gets a "_score" field showing
+     its relevance rank.
+
+  g) The frontend renders result cards. Each card has an "Add to course" button.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  STEP 3B — ADOPT AN EXISTING RESOURCE INTO A COURSE  (POST /course-resources)
+────────────────────────────────────────────────────────────────────────────────
+
+  BROWSER → API GATEWAY → Lambda: course_resources.handler
+                                ↓
+                           DynamoDB: Textbookhistory-index (put_item)
+                                ↓
+                     LAMBDA → API GATEWAY → BROWSER
+
+  What happens in detail:
+
+  a) The professor clicks "Add to course" on a search result. api.js sends:
+       POST /course-resources
+       Body: { coursePrefix, courseNumber, quarter, year,
+               professorFirstName, professorLastName,
+               resourceId, ISBN, url, title, xb12Code, materialType }
+
+  b) API Gateway triggers the CourseResourcesFn Lambda (same function as Step 2).
+
+  c) The Lambda detects it's a POST and calls _create().
+
+  d) _create() validates that coursePrefix and courseNumber are present, and
+     that at least one of resourceId, ISBN, or url is provided.
+
+  e) A new item is assembled with a fresh UUID as its primary key and the
+     current UTC timestamp as "adoptedAt". Optional fields (quarter, year,
+     professor names, resource metadata) are added if present.
+
+  f) DynamoDB put_item writes the row to Textbookhistory-index. This is the
+     permanent record that this course uses this resource for this term.
+
+  g) The Lambda returns { "success": true, "adoption": { ...the new row... } }.
+
+  h) The frontend immediately calls refreshAdopted() to reload the adoption
+     list (Step 2), so the new entry appears without a page reload.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  STEP 4 — ISBN LOOKUP (optional pre-fill when adding a new textbook)
+             (POST /isbn-lookup)
+────────────────────────────────────────────────────────────────────────────────
+
+  BROWSER → API GATEWAY → Lambda: isbn_lookup.handler
+                                ↓
+                    External APIs (called in order):
+                      1. ISBNdb API        (requires API key; returns MSRP price)
+                      2. Google Books API  (free; returns title/author/description)
+                      3. Open Library API  (free; fallback bibliographic data)
+                                ↓
+                     LAMBDA → API GATEWAY → BROWSER
+
+  What happens in detail:
+
+  a) The professor enters an ISBN and clicks "Look up ISBN". api.js sends:
+       POST /isbn-lookup
+       Body: { "isbn": "9781234567897" }
+
+  b) API Gateway triggers the IsbnLookupFn Lambda.
+
+  c) isbn_lookup.py calls registries.lookup_isbn(isbn).
+
+  d) lookup_isbn() normalizes the ISBN (strips dashes/spaces) and validates
+     its length (must be 10 or 13 digits).
+
+  e) Three external registries are queried in sequence:
+       - ISBNdb: if an API key is configured, it returns the MSRP list price
+         along with title, authors, and publisher.
+       - Google Books: free public API, fills in any gaps from ISBNdb.
+       - Open Library: final fallback for title/author/publisher if the others
+         failed or returned partial data.
+     Results are merged with a "first source wins" strategy, so the most
+     authoritative source (ISBNdb) takes precedence on fields it provides.
+
+  f) The function returns:
+       { "found": true/false, "isbn": "...", "metadata": {...merged fields...},
+         "missingFields": ["price", ...], "sources": ["isbndb", "googleBooks"] }
+
+  g) The frontend pre-fills the form fields (title, author, publisher, price).
+     If the title/publisher/url looks like an OER source (OpenStax, LibreTexts,
+     Pressbooks, etc.) the cost type is automatically set to "oer". Missing
+     fields are highlighted in orange so the professor knows what to fill in.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  STEP 5 — CREATE A NEW RESOURCE  (POST /resources)
+────────────────────────────────────────────────────────────────────────────────
+
+  This is the most complex flow. It touches DynamoDB, AOSS, and Bedrock.
+
+  BROWSER → API GATEWAY → Lambda: create_resource.handler
+                                ↓
+                    [1] XB12 classification (in-memory, no I/O)
+                                ↓
+                    [2] DynamoDB: Resource-index (put_item)
+                                ↓
+                    [3] Bedrock: Titan Text Embeddings v2 (generate vector)
+                                ↓
+                    [4] Amazon OpenSearch Serverless (index document)
+                                ↓
+                     LAMBDA → API GATEWAY → BROWSER
+
+  What happens in detail:
+
+  a) The professor fills in the resource form and clicks "Save". api.js sends:
+       POST /resources
+       Body: { title, materialType, ISBN or url, author, publisher,
+               subject, costType, price, description, classNumber }
+
+  b) API Gateway triggers the CreateResourceFn Lambda.
+
+  c) create_resource.py validates required fields:
+       - title is always required
+       - textbooks require an ISBN
+       - platforms require a URL
+       - materialType is inferred from which field is present if not supplied
+
+  d) OER DETECTION:
+     The Lambda calls xb12.is_oer_source() passing the title, author,
+     publisher, and URL. This checks for known OER keywords (openstax,
+     libretexts, pressbooks, oercommons, creative commons, merlot, etc.).
+     If a match is found, costType is forced to "oer" regardless of what
+     the user selected, because OER materials are always zero-cost.
+
+  e) XB12 CLASSIFICATION (xb12.py):
+     xb12.classify() is called with a list containing this single material.
+     The decision tree works as follows:
+       - If no materials → code A (no course material)
+       - If student pays nothing:
+           - All OER → E (zero-cost OER)
+           - OER + cost-bearing (college pays) → G (mix, no cost to student)
+           - Cost-bearing only (college pays) → C (college absorbs cost)
+           - No cost-bearing, some OER → G
+           - No cost-bearing, no OER → F (free digital, non-OER)
+       - If student pays something:
+           - Total <= local threshold ($50) → D (low textbook cost, LTC)
+           - Total > threshold → Y (standard cost, does not meet ZTC/LTC)
+     The result is a single letter code and a plain-English explanation.
+     zero_low_cost_marking() then maps the code to the ZTC/LTC label used
+     in the catalog (ZTC for E/F/G/C, LTC for D, blank for A and Y).
+
+  f) A new resource item is assembled with a UUID as its id, the computed
+     xb12Code, ztcLtc, and costStatus fields, plus all the form fields.
+
+  g) DynamoDB put_item writes the item to Resource-index. This is the
+     permanent catalog record — the source of truth for this resource.
+
+  h) EMBEDDING GENERATION:
+     embeddings.resource_text() concatenates title, author, publisher,
+     subject, classNumber, materialType, and description into a single string.
+     embeddings.embed_text() sends that string to Bedrock:
+       bedrock-runtime.invoke_model("amazon.titan-embed-text-v2:0")
+     Bedrock returns a 1024-dimensional normalized floating-point vector.
+     Normalization means L2 distance is equivalent to cosine similarity,
+     which is what OpenSearch uses for ranking.
+
+  i) OPENSEARCH INDEXING:
+     AossClient.ensure_index() checks whether the "resources_v2" index
+     exists in the AOSS collection. If not, it creates it with the correct
+     field mappings including the knn_vector field for the embedding.
+     AossClient.index_document() POSTs the resource document (including the
+     vector) to AOSS. OpenSearch stores both the text fields (for lexical
+     search) and the vector (for semantic k-NN search).
+     If AOSS indexing fails, the Lambda still returns success — the DynamoDB
+     write is the authoritative record, and a warning is included in the
+     response so the admin knows the search index may be out of sync.
+
+  j) The embedding vector is removed from the response body before it is
+     sent back to the browser (it is large and not useful to the UI).
+
+  k) The Lambda returns:
+       { "success": true, "resource": {...}, "xb12": { "code": "E",
+         "meaning": "...", "explanation": "...", "ztcLtc": "ZTC" } }
+
+  l) app.js immediately calls POST /course-resources (Step 3B) to adopt the
+     newly created resource into the current course.
+
+  m) The UI shows the XB12 classification result with a color-coded badge
+     and plain-English explanation.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  SIGNING AND SECURITY (how Lambda talks to AWS services safely)
+────────────────────────────────────────────────────────────────────────────────
+
+  All AWS API calls (DynamoDB, Bedrock) are made through the boto3 SDK, which
+  automatically signs requests using the Lambda execution role's temporary
+  credentials (SigV4 signing).
+
+  OpenSearch Serverless requires an additional signing step because it uses
+  the "aoss" SigV4 service name instead of the standard "es" name. The
+  AossClient class in aoss.py handles this manually using botocore:
+    - It builds an AWSRequest object
+    - Adds the X-Amz-Content-SHA256: UNSIGNED-PAYLOAD header (required by AOSS)
+    - Signs the request with SigV4Auth
+    - Sends it using Python's built-in urllib (no third-party HTTP library needed)
+
+  An AOSS data access policy grants the Lambda execution role permission to
+  create/read/write documents and manage indexes on the resource-index collection.
+
+  The frontend never communicates directly with DynamoDB, OpenSearch, or Bedrock.
+  It only talks to API Gateway, which is the single public entry point.
+
+  CORS headers (Access-Control-Allow-Origin: *) are added to every Lambda
+  response by the shared respond() helper in responses.py, so the browser
+  allows the frontend (served from CloudFront) to call the API.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  SHARED LAYER: xb12_common (backend/layer/python/xb12_common/)
+────────────────────────────────────────────────────────────────────────────────
+
+  All four Lambda functions import from this shared layer. It contains:
+
+    __init__.py    → empty package marker
+    xb12.py        → XB12 classification engine (decision tree, OER detection,
+                     code-to-meaning mappings, ZTC/LTC labels)
+    aoss.py        → Low-level AOSS HTTP client with SigV4 signing, index
+                     management (ensure_index), document indexing, and search
+    embeddings.py  → Bedrock client for Titan Text Embeddings v2; produces
+                     normalized 1024-dim vectors; gracefully returns None on
+                     failure so callers fall back to lexical search
+    registries.py  → ISBN lookup against ISBNdb, Google Books, and Open Library;
+                     normalizes and merges results; identifies missing fields
+    responses.py   → HTTP response helpers (ok, bad_request, server_error),
+                     JSON body parsing, query string extraction, HTTP method
+                     detection for both REST (v1) and HTTP API (v2) Gateway events
+
+
+────────────────────────────────────────────────────────────────────────────────
+  COMPLETE DATA FLOW SUMMARY (one-line per step)
+────────────────────────────────────────────────────────────────────────────────
+
+  1. Browser loads static files from CloudFront → S3
+  2. Frontend fetches config.json → learns API Gateway URL
+  3. Professor enters course → stored in browser memory only
+  4. GET /course-resources → Lambda scans Textbookhistory-index in DynamoDB
+  5. Professor searches → GET /resources/search → Lambda queries AOSS
+       (lexical first, then Bedrock + k-NN vector if no lexical results)
+  6. Professor adopts existing → POST /course-resources → Lambda writes to
+       Textbookhistory-index in DynamoDB
+  7. Professor enters ISBN → POST /isbn-lookup → Lambda queries ISBNdb +
+       Google Books + Open Library and merges results
+  8. Professor saves new resource → POST /resources →
+       a. Lambda classifies with XB12 decision tree (in-memory)
+       b. Lambda writes to Resource-index in DynamoDB
+       c. Lambda calls Bedrock to generate a semantic embedding vector
+       d. Lambda indexes the resource + vector in AOSS
+       e. Frontend auto-adopts via POST /course-resources (DynamoDB write)
+  9. All responses include CORS headers so the browser accepts them
+ 10. The embedding vector never leaves the Lambda → it is stripped before the
+     response is returned to the browser
+
+================================================================================
