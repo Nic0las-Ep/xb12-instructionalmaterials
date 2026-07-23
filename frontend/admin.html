@@ -255,6 +255,9 @@
     .badge-under-review  { background: rgba(217,119,6,0.12); color: #d97706; }
     .badge-approved      { background: rgba(22,163,74,0.12); color: #16a34a; }
     .badge-needs-correction { background: rgba(220,38,38,0.1); color: #dc2626; }
+    /* Publication classification (links sent to destinations) */
+    .badge-submitted     { background: rgba(13,148,136,0.14); color: #0f766e; }
+    .badge-unsent        { background: rgba(107,114,128,0.12); color: #6b7280; }
 
     /* ── MATERIAL TYPE CHIPS ── */
     .chip {
@@ -775,6 +778,7 @@
             <th>Material Type</th>
             <th>Submitted</th>
             <th>Status</th>
+            <th>Links Sent</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -1042,6 +1046,7 @@ function renderTable(list) {
       <td>${materialChip(s.materialType)}</td>
       <td>${formatDate(s.submittedAt)}</td>
       <td>${statusBadge(s.status)}</td>
+      <td>${linksSentBadge(s)}</td>
       <td>
         <button class="btn-view" onclick="openModal('${esc(s.id)}')"
           aria-label="View submission from ${esc(s.respondentName)}">
@@ -1447,6 +1452,18 @@ async function confirmPublish() {
       (data.skippedDuplicateCount ? ` · Skipped duplicates: <strong>${Number(data.skippedDuplicateCount)}</strong>` : '') +
       `<br>Destinations: ${esc(destLabels)}<br>When: ${esc(when)}`;
 
+    // Classify this entry as "Submitted" (links sent) in memory and refresh
+    // the table so the badge updates immediately.
+    const idx = SUBMISSIONS.findIndex(x => x.id === s.id);
+    if (idx !== -1) {
+      SUBMISSIONS[idx].linksSent = true;
+      SUBMISSIONS[idx].linksSentAt = data.publishedAt || new Date().toISOString();
+      if (Array.isArray(data.publishedDestinations)) {
+        SUBMISSIONS[idx].publishedDestinations = data.publishedDestinations;
+      }
+      applyFilters();
+    }
+
     // Refresh the publication-status list.
     loadPublicationStatus(s);
   } catch (err) {
@@ -1580,6 +1597,18 @@ function statusBadge(status) {
   };
   const cls = map[status] || 'badge-pending';
   return `<span class="badge ${cls}">${esc(status)}</span>`;
+}
+
+/* Publication classification badge: "Submitted" once links have been sent to
+   the destination pages, otherwise "Not sent". Driven by the submission's
+   linksSent flag (stamped by the publish backend). */
+function linksSentBadge(s) {
+  if (s && s.linksSent) {
+    const when = formatDate(s.linksSentAt);
+    const title = when ? `Links sent ${when}` : 'Links sent';
+    return `<span class="badge badge-submitted" title="${esc(title)}">&#10003; Submitted</span>`;
+  }
+  return `<span class="badge badge-unsent">Not sent</span>`;
 }
 
 /* Material type chip HTML */

@@ -240,6 +240,11 @@ controls:
 - A **Published to:** status area shows which destinations already contain the
   submission. Changing an already-published submission back to
   `Needs Correction` shows a warning but never auto-unpublishes.
+- Once links are sent, the publish backend stamps the submission
+  (`linksSent`, `linksSentAt`, `publishedDestinations`) and the submissions
+  table classifies the entry with a **Submitted** badge in a "Links Sent"
+  column (otherwise "Not sent"). This is separate from the review status, so it
+  does not affect the Approved-required publish gate.
 
 Authorization is re-validated in the backend; the disabled button is only a
 convenience. The route is namespaced under `/admin/...` so a Cognito (or other)
