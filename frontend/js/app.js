@@ -14,6 +14,35 @@
 
   let currentCourse = null;
 
+  // Map common De Anza course prefixes to full subject names so the subject
+  // field can be pre-filled from the course entered in Step 1. Unknown
+  // prefixes fall back to whatever the professor typed.
+  const SUBJECT_BY_PREFIX = {
+    BIOL: 'Biology', BIO: 'Biology', ANAT: 'Biology', PHYS: 'Physics',
+    ASTR: 'Astronomy', CHEM: 'Chemistry', MATH: 'Mathematics', STAT: 'Mathematics',
+    CIS: 'Computer Science', CS: 'Computer Science', COIN: 'Computer Science',
+    ENGL: 'English', ENGR: 'Engineering', ECON: 'Economics', HIST: 'History',
+    PSYC: 'Psychology', SOC: 'Sociology', ANTH: 'Anthropology', POLI: 'Political Science',
+    PHIL: 'Philosophy', ART: 'Art', MUS: 'Music', CHEM1: 'Chemistry',
+    ACCT: 'Accounting', BUS: 'Business', GEOG: 'Geography', GEOL: 'Geology',
+    SPAN: 'Spanish', ESL: 'English', COMM: 'Communication Studies', KNES: 'Kinesiology',
+    NURS: 'Nursing', EDUC: 'Education',
+  };
+
+  function subjectFromCourse() {
+    if (!currentCourse) return '';
+    const prefix = (currentCourse.coursePrefix || '').toUpperCase();
+    return SUBJECT_BY_PREFIX[prefix] || currentCourse.coursePrefix || '';
+  }
+
+  // Pre-fill the resource subject from the loaded course. By default only fills
+  // an empty field (so a manual edit isn't clobbered); pass force=true to reset.
+  function prefillSubject(force) {
+    const el = $('res-subject');
+    if (!el) return;
+    if (force || !el.value.trim()) el.value = subjectFromCourse();
+  }
+
   // ---- XB12 presentation --------------------------------------------------
   const XB12_MEANING = {
     A: 'No associated course material',
@@ -95,6 +124,7 @@
       `${prefix} ${number}${term ? ' · ' + term : ''}`;
 
     unlockCourseSteps();
+    prefillSubject(true); // seed the add-new subject from the course
     await refreshAdopted();
     $('step-adopted').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -265,7 +295,11 @@
       $('res-title').value = m.title || '';
       $('res-author').value = m.author || '';
       $('res-publisher').value = m.publisher || '';
-      if (m.categories && m.categories.length) $('res-subject').value = m.categories[0];
+      // Only use the book's category if the subject wasn't already set from
+      // the course (course subject takes precedence).
+      if (!$('res-subject').value.trim() && m.categories && m.categories.length) {
+        $('res-subject').value = m.categories[0];
+      }
       if (m.price != null) {
         $('res-price').value = m.price;
         $('res-cost-type').value = 'priced';
@@ -412,6 +446,7 @@
     );
     ['fg-title', 'fg-author', 'fg-publisher', 'fg-price'].forEach((g) => markMissing(g, false));
     hide('isbn-status');
+    prefillSubject(true); // keep the course subject seeded for the next entry
   }
 
   // ---- Tabs ---------------------------------------------------------------
