@@ -472,6 +472,68 @@
     }
     .save-feedback.show { display: flex; }
 
+    /* ── PUBLISHING PANEL ── */
+    .publish-panel { margin-top: 1rem; }
+    .btn-publish {
+      padding: 9px 24px;
+      background: var(--success);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s, opacity 0.18s;
+    }
+    .btn-publish:hover:not(:disabled) { background: #12833c; }
+    .btn-publish:disabled { background: #cbd5e1; color: #eef2f6; cursor: not-allowed; }
+    .publish-hint { font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; }
+    .publish-hint.hidden { display: none; }
+
+    .pub-status { margin-bottom: 0.8rem; }
+    .pub-status-title { font-size: 0.78rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.4rem; }
+    .pub-status-list { list-style: none; display: flex; flex-direction: column; gap: 0.3rem; }
+    .pub-status-list li { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: var(--text); }
+    .pub-dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; flex: 0 0 auto; }
+    .pub-status-list li.published .pub-dot { background: var(--success); }
+    .pub-status-list li.published .pub-state { color: var(--success); font-weight: 600; }
+    .pub-state { color: var(--muted); }
+
+    .pub-warning {
+      background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412;
+      border-radius: 6px; padding: 0.55rem 0.75rem; font-size: 0.82rem; margin-bottom: 0.8rem;
+    }
+
+    .publish-confirm {
+      margin-top: 0.9rem; padding: 0.9rem; border: 1px solid var(--border);
+      border-radius: 8px; background: #fafbfc;
+    }
+    .publish-confirm-title { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.55rem; }
+    .publish-urls { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.75rem;
+      max-height: 180px; overflow: auto; }
+    .publish-urls a { color: var(--info); font-size: 0.83rem; word-break: break-all; }
+    .publish-urls .none { color: var(--danger); font-size: 0.83rem; }
+    .publish-dests { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.75rem; }
+    .publish-dests-label { font-size: 0.78rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em; }
+    .publish-dests label { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; cursor: pointer; }
+    .publish-result { margin-top: 0.6rem; font-size: 0.85rem; border-radius: 6px; padding: 0.6rem 0.75rem; }
+    .publish-result.success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+    .publish-result.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+    /* ── DEMO NAV ── */
+    .demo-nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.55rem 0.8rem; margin: 1rem 0 0;
+    }
+    .demo-nav .demo-nav-label { font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.3rem; }
+    .demo-nav a { font-size: 0.82rem; color: var(--burg); text-decoration: none; font-weight: 600;
+      padding: 4px 10px; border-radius: 6px; border: 1px solid transparent; }
+    .demo-nav a:hover { background: var(--burg-light); border-color: var(--burg); }
+
     /* ── MOBILE ── */
     @media (max-width: 680px) {
       .site-header { padding: 0 1rem; }
@@ -601,6 +663,16 @@
 
 <!-- ══ MAIN PAGE ══ -->
 <main class="page" role="main">
+
+  <!-- Demo navigation (for demonstrating the full flow) -->
+  <nav class="demo-nav" aria-label="Demo navigation">
+    <span class="demo-nav-label">Demo</span>
+    <a href="index.html">Professor Form</a>
+    <a href="admin.html" aria-current="page">Admin Review</a>
+    <a href="course-schedule.html">Course Schedule Mock</a>
+    <a href="bookstore.html">Bookstore Mock</a>
+    <a href="mis-reporting.html">MIS Reporting Mock</a>
+  </nav>
 
   <!-- Deep-link error (shown if ?id= param has no match) -->
   <div class="deeplink-error" id="deeplink-error" role="alert"></div>
@@ -772,6 +844,48 @@
         <button class="btn-save" onclick="saveReview()" type="button">Save Review</button>
         <button class="btn-close-modal" onclick="closeModal()" type="button">Close</button>
         <span class="save-feedback" id="save-feedback" aria-live="polite">&#10003; Saved</span>
+      </div>
+    </div>
+
+    <!-- Publishing controls -->
+    <div class="review-panel publish-panel">
+      <div class="review-panel-title">Publish Approved Links</div>
+
+      <!-- Current publication status for this submission -->
+      <div class="pub-status">
+        <div class="pub-status-title">Published to:</div>
+        <ul class="pub-status-list" id="pub-status-list" aria-live="polite">
+          <li data-dest="course-schedule"><span class="pub-dot"></span> Course Schedule — <span class="pub-state">Not yet published</span></li>
+          <li data-dest="bookstore"><span class="pub-dot"></span> Bookstore — <span class="pub-state">Not yet published</span></li>
+          <li data-dest="mis-reporting"><span class="pub-dot"></span> State Compliance / MIS Reporting — <span class="pub-state">Not yet published</span></li>
+        </ul>
+      </div>
+
+      <!-- Shown when an already-published submission is no longer Approved -->
+      <div class="pub-warning" id="pub-warning" role="alert" hidden></div>
+
+      <div class="review-actions">
+        <button class="btn-publish" id="btn-publish" type="button" onclick="openPublishPanel()" disabled>
+          Publish Approved Links
+        </button>
+        <span class="publish-hint" id="publish-hint">Approve this submission before publishing.</span>
+      </div>
+
+      <!-- Confirmation panel (hidden until Publish is clicked) -->
+      <div class="publish-confirm" id="publish-confirm" hidden>
+        <div class="publish-confirm-title">Confirm the links about to be published</div>
+        <div class="publish-urls" id="publish-urls"></div>
+        <div class="publish-dests">
+          <div class="publish-dests-label">Destinations</div>
+          <label><input type="checkbox" class="pub-dest-cb" value="course-schedule" checked /> Course Schedule</label>
+          <label><input type="checkbox" class="pub-dest-cb" value="bookstore" checked /> Bookstore</label>
+          <label><input type="checkbox" class="pub-dest-cb" value="mis-reporting" checked /> State Compliance / MIS Reporting</label>
+        </div>
+        <div class="review-actions">
+          <button class="btn-close-modal" type="button" onclick="cancelPublish()">Cancel</button>
+          <button class="btn-save" id="btn-confirm-publish" type="button" onclick="confirmPublish()">Confirm &amp; Publish</button>
+        </div>
+        <div class="publish-result" id="publish-result" aria-live="polite" hidden></div>
       </div>
     </div>
 
@@ -962,6 +1076,9 @@ function openModal(id) {
   document.getElementById('review-notes').value  = s.adminNotes || '';
   document.getElementById('save-feedback').classList.remove('show');
 
+  // Reset + refresh the publishing controls for this submission
+  refreshPublishControls(s);
+
   // Build detail body
   document.getElementById('modal-body').innerHTML = buildDetailHTML(s);
 
@@ -1121,6 +1238,212 @@ async function saveReview() {
 
   updateStats();
   applyFilters();
+
+  // Reflect the new status in the publishing controls (enable/disable button,
+  // show a warning if a now-non-approved submission was already published).
+  if (idx !== -1) refreshPublishControls(SUBMISSIONS[idx]);
+}
+
+/* ================================================================
+   6c. PUBLISHING (Publish Approved Links)
+   ================================================================
+   The Publish button is enabled only when the submission status is
+   "Approved". Clicking it reveals a confirmation panel listing the
+   valid URLs found in THIS submission and destination checkboxes.
+   Confirming POSTs to /admin/submissions/{id}/publish. The backend
+   re-validates approval, extracts/validates/dedupes URLs, and writes
+   idempotent publication records. This uses its own fetch (admin.html
+   does not load api.js) to avoid any global-name collisions. */
+
+const PUBLISH_DESTINATIONS = [
+  { id: 'course-schedule', label: 'Course Schedule' },
+  { id: 'bookstore', label: 'Bookstore' },
+  { id: 'mis-reporting', label: 'State Compliance / MIS Reporting' },
+];
+
+/* Client-side URL extraction that mirrors the backend helper: pull URLs only
+   from resource-bearing fields (never admin notes / titles / ISBNs / names),
+   keep http/https, normalize lightly, de-duplicate. This is only for the
+   confirmation preview; the backend is the source of truth. */
+function extractSubmissionUrls(s) {
+  const urlFields = ['url', 'oerUrl', 'resourceUrl', 'platformUrl', 'link'];
+  const textFields = ['description', 'notes', 'resourceDescription', 'noCostDescription'];
+  const candidates = [];
+  (s.materials || []).forEach(m => {
+    if (!m || typeof m !== 'object') return;
+    urlFields.forEach(f => { if (m[f]) candidates.push(m[f]); });
+    textFields.forEach(f => { if (m[f]) candidates.push(m[f]); });
+  });
+  urlFields.forEach(f => { if (s[f]) candidates.push(s[f]); });
+
+  const re = /https?:\/\/[^\s<>"'`)\]}]+/gi;
+  const seen = new Set();
+  const out = [];
+  candidates.forEach(val => {
+    const matches = String(val).match(re);
+    if (!matches) return;
+    matches.forEach(raw => {
+      const norm = normalizePreviewUrl(raw);
+      if (norm && !seen.has(norm)) { seen.add(norm); out.push(norm); }
+    });
+  });
+  return out;
+}
+
+function normalizePreviewUrl(raw) {
+  try {
+    const u = new URL(String(raw).trim().replace(/[.,;:!?)\]}>"']+$/, ''));
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    u.hash = '';
+    let s = u.toString();
+    if (s.endsWith('/') && u.pathname !== '/') s = s.slice(0, -1);
+    return s;
+  } catch (_) { return null; }
+}
+
+/* Enable/disable the Publish button based on status, and load the current
+   publication status for this submission across the three destinations. */
+function refreshPublishControls(s) {
+  cancelPublish();
+  const btn  = document.getElementById('btn-publish');
+  const hint = document.getElementById('publish-hint');
+  const warning = document.getElementById('pub-warning');
+  const approved = s.status === 'Approved';
+
+  btn.disabled = !approved;
+  hint.classList.toggle('hidden', approved);
+
+  // Reset status list to "Not yet published"
+  document.querySelectorAll('#pub-status-list li').forEach(li => {
+    li.classList.remove('published');
+    li.querySelector('.pub-state').textContent = 'Not yet published';
+  });
+  warning.hidden = true;
+
+  loadPublicationStatus(s);
+}
+
+/* Query each destination and mark those that already contain this submission. */
+async function loadPublicationStatus(s) {
+  const targetId = s.id;
+  let anyPublished = false;
+  await Promise.all(PUBLISH_DESTINATIONS.map(async (d) => {
+    try {
+      const r = await fetch(`${API_BASE}/published-links?destination=${encodeURIComponent(d.id)}`, { cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json();
+      const pubs = Array.isArray(data.publications) ? data.publications : [];
+      const match = pubs.find(p => p.submissionId === targetId);
+      if (match) {
+        anyPublished = true;
+        // Guard against a stale modal (user may have moved on)
+        if (currentSubmissionId !== targetId) return;
+        const li = document.querySelector(`#pub-status-list li[data-dest="${d.id}"]`);
+        if (li) {
+          li.classList.add('published');
+          const when = formatDate(match.publishedAt);
+          li.querySelector('.pub-state').textContent = when ? `Published ${when}` : 'Published';
+        }
+      }
+    } catch (_) { /* ignore per-destination errors */ }
+  }));
+
+  // If the submission was already published but is no longer Approved, warn
+  // (do NOT auto-unpublish).
+  if (currentSubmissionId === targetId && anyPublished && s.status !== 'Approved') {
+    const warning = document.getElementById('pub-warning');
+    warning.textContent = 'This submission was already published. Changing its status does not remove previously published links.';
+    warning.hidden = false;
+  }
+}
+
+/* Reveal the confirmation panel with the URLs found in this submission. */
+function openPublishPanel() {
+  const s = SUBMISSIONS.find(x => x.id === currentSubmissionId);
+  if (!s) return;
+  const panel = document.getElementById('publish-confirm');
+  const urlBox = document.getElementById('publish-urls');
+  const result = document.getElementById('publish-result');
+  result.hidden = true;
+  result.textContent = '';
+  result.className = 'publish-result';
+
+  const urls = extractSubmissionUrls(s);
+  if (urls.length === 0) {
+    urlBox.innerHTML = '<div class="none">No valid URLs were found in this submission. There is nothing to publish.</div>';
+  } else {
+    urlBox.innerHTML = urls.map(u =>
+      `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a>`
+    ).join('');
+  }
+  // Reset destination checkboxes to all-checked
+  document.querySelectorAll('.pub-dest-cb').forEach(cb => { cb.checked = true; });
+  document.getElementById('btn-confirm-publish').disabled = urls.length === 0;
+  panel.hidden = false;
+}
+
+function cancelPublish() {
+  const panel = document.getElementById('publish-confirm');
+  if (panel) panel.hidden = true;
+}
+
+/* Gather destinations, POST to the publish route, show the result. */
+async function confirmPublish() {
+  const s = SUBMISSIONS.find(x => x.id === currentSubmissionId);
+  if (!s) return;
+  const result = document.getElementById('publish-result');
+  const confirmBtn = document.getElementById('btn-confirm-publish');
+  const publishBtn = document.getElementById('btn-publish');
+
+  const destinations = Array.from(document.querySelectorAll('.pub-dest-cb'))
+    .filter(cb => cb.checked).map(cb => cb.value);
+
+  const showError = (msg) => {
+    result.hidden = false;
+    result.className = 'publish-result error';
+    result.textContent = '⚠ ' + msg;
+  };
+
+  if (s.status !== 'Approved') { showError('Approve this submission before publishing.'); return; }
+  if (destinations.length === 0) { showError('Select at least one destination.'); return; }
+
+  // Disable both buttons during the request so double-clicking cannot create duplicates.
+  confirmBtn.disabled = true;
+  publishBtn.disabled = true;
+  const prevLabel = confirmBtn.textContent;
+  confirmBtn.textContent = 'Publishing…';
+
+  try {
+    const r = await fetch(`${API_BASE}/admin/submissions/${encodeURIComponent(s.id)}/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destinations }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((data && data.error) || ('Server returned ' + r.status));
+
+    const destLabels = (data.destinations || destinations)
+      .map(id => (PUBLISH_DESTINATIONS.find(d => d.id === id) || { label: id }).label)
+      .join(', ');
+    const when = formatDate(data.publishedAt) || new Date().toLocaleString();
+    result.hidden = false;
+    result.className = 'publish-result success';
+    result.innerHTML =
+      `✓ Links published successfully.<br>` +
+      `Published: <strong>${Number(data.publishedCount || 0)}</strong>` +
+      (data.skippedDuplicateCount ? ` · Skipped duplicates: <strong>${Number(data.skippedDuplicateCount)}</strong>` : '') +
+      `<br>Destinations: ${esc(destLabels)}<br>When: ${esc(when)}`;
+
+    // Refresh the publication-status list.
+    loadPublicationStatus(s);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    confirmBtn.textContent = prevLabel;
+    confirmBtn.disabled = false;
+    // Re-enable the top publish button only if still approved.
+    publishBtn.disabled = (s.status !== 'Approved');
+  }
 }
 
 

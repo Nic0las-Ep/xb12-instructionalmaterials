@@ -172,6 +172,32 @@ async function deleteSubmission(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Publishing API (admin publish + mock destination pages)
+// ---------------------------------------------------------------------------
+
+/**
+ * Publish the valid URLs of an APPROVED submission to one or more mock
+ * destinations. The backend re-validates approval and de-duplicates.
+ * @param {string} submissionId
+ * @param {string[]} destinations e.g. ['course-schedule','bookstore','mis-reporting']
+ * @returns {Promise<{success:boolean, publishedCount:number, skippedDuplicateCount:number, destinations:string[], publishedAt:string}>}
+ */
+async function publishSubmission(submissionId, destinations) {
+  return _request('POST', `/admin/submissions/${encodeURIComponent(submissionId)}/publish`, {
+    body: { destinations },
+  });
+}
+
+/**
+ * Read the links published to a mock destination.
+ * @param {string} destination one of 'course-schedule' | 'bookstore' | 'mis-reporting'
+ * @returns {Promise<{count:number, destination:string, publications:object[]}>}
+ */
+async function getPublishedLinks(destination) {
+  return _request('GET', '/published-links', { query: { destination } });
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
@@ -187,6 +213,8 @@ const API = {
   listSubmissions,
   updateSubmission,
   deleteSubmission,
+  publishSubmission,
+  getPublishedLinks,
   ApiError,
   get baseUrl() {
     return BASE_URL;

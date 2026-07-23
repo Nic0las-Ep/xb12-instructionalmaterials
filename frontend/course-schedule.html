@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Course Schedule — Instructional Material Links</title>
+  <style>
+    :root {
+      --cs-primary: #0e7490;   /* cyan-700 */
+      --cs-accent:  #0891b2;   /* cyan-600 */
+      --cs-deep:    #155e75;   /* cyan-800 */
+      --cs-bg:      #f0f9ff;   /* sky-50 */
+      --card:       #ffffff;
+      --border:     #dbeafe;
+      --text:       #0f172a;
+      --muted:      #64748b;
+      --danger:     #dc2626;
+      --radius:     10px;
+      --font:       'Segoe UI', Arial, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--cs-bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+    .site-header {
+      background: linear-gradient(135deg, var(--cs-deep), var(--cs-accent));
+      color: #fff; padding: 1.1rem 1.6rem;
+    }
+    .site-header h1 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; }
+    .site-header p { opacity: 0.9; font-size: 0.88rem; margin-top: 2px; }
+
+    /* Demo nav */
+    .demo-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; background: #fff;
+      border-bottom: 1px solid var(--border); padding: 0.55rem 1.6rem; }
+    .demo-nav .demo-nav-label { font-size: 0.7rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.3rem; }
+    .demo-nav a { font-size: 0.82rem; color: var(--cs-primary); text-decoration: none; font-weight: 600;
+      padding: 4px 10px; border-radius: 6px; }
+    .demo-nav a:hover { background: var(--cs-bg); }
+    .demo-nav a[aria-current="page"] { background: var(--cs-primary); color: #fff; }
+
+    .page { max-width: 1000px; margin: 0 auto; padding: 1.6rem; }
+    .intro { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.2rem; }
+
+    .state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+    .state.error { color: var(--danger); }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--border);
+      border-top-color: var(--cs-accent); border-radius: 50%; margin: 0 auto 0.8rem;
+      animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .course-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 1px 3px rgba(8,145,178,0.08); display: flex; flex-direction: column; }
+    .course-card-head { background: var(--cs-bg); border-bottom: 1px solid var(--border);
+      padding: 0.85rem 1rem; }
+    .course-code { font-size: 1.05rem; font-weight: 800; color: var(--cs-deep); }
+    .course-meta { font-size: 0.78rem; color: var(--muted); margin-top: 3px; display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .course-meta .crn-badge { background: var(--cs-primary); color: #fff; border-radius: 4px; padding: 1px 7px; font-weight: 600; }
+    .links { padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+    .links-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; }
+    .link-item { display: flex; align-items: flex-start; gap: 7px; font-size: 0.85rem; }
+    .link-item a { color: var(--cs-accent); text-decoration: none; word-break: break-all; }
+    .link-item a:hover { text-decoration: underline; }
+    .link-item::before { content: "🔗"; font-size: 0.8rem; line-height: 1.4; }
+    footer { text-align: center; color: var(--muted); font-size: 0.78rem; padding: 1.5rem; }
+  </style>
+</head>
+<body>
+  <header class="site-header" role="banner">
+    <h1>Course Schedule — Instructional Material Links</h1>
+    <p>Approved instructional-material links students can review before registration.</p>
+  </header>
+
+  <nav class="demo-nav" aria-label="Demo navigation">
+    <span class="demo-nav-label">Demo</span>
+    <a href="index.html">Professor Form</a>
+    <a href="admin.html">Admin Review</a>
+    <a href="course-schedule.html" aria-current="page">Course Schedule Mock</a>
+    <a href="bookstore.html">Bookstore Mock</a>
+    <a href="mis-reporting.html">MIS Reporting Mock</a>
+  </nav>
+
+  <main class="page" role="main">
+    <p class="intro">
+      Published links appear newest first, grouped by course section. This is a demonstration
+      mockup and is not connected to a real course schedule system.
+    </p>
+
+    <div id="content" aria-live="polite">
+      <div class="state" id="loading">
+        <div class="spinner" aria-hidden="true"></div>
+        Loading approved instructional-material links…
+      </div>
+    </div>
+  </main>
+
+  <footer>Course Schedule — demonstration mockup only.</footer>
+
+  <script src="js/api.js"></script>
+  <script>
+    function esc(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function fmtDate(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d)) return '';
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function renderCards(publications) {
+      const content = document.getElementById('content');
+      if (!publications.length) {
+        content.innerHTML = '<div class="state">No approved instructional-material links have been published.</div>';
+        return;
+      }
+      const cards = publications.map(p => {
+        const code = [p.coursePrefix, p.courseNumber].filter(Boolean).map(esc).join(' ') || 'Course';
+        const crn = p.crn ? `<span class="crn-badge">CRN ${esc(p.crn)}</span>` : '';
+        const when = fmtDate(p.publishedAt);
+        const links = (p.urls || []).map(u =>
+          `<div class="link-item"><a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(u)}</a></div>`
+        ).join('') || '<div class="link-item">No links.</div>';
+        return `
+          <article class="course-card">
+            <div class="course-card-head">
+              <div class="course-code">${code}</div>
+              <div class="course-meta">${crn}${when ? `<span>Published ${esc(when)}</span>` : ''}</div>
+            </div>
+            <div class="links">
+              <div class="links-label">Approved resource links</div>
+              ${links}
+            </div>
+          </article>`;
+      }).join('');
+      content.innerHTML = `<div class="course-grid">${cards}</div>`;
+    }
+
+    async function load() {
+      const content = document.getElementById('content');
+      try {
+        await API.initConfig();
+        const data = await API.getPublishedLinks('course-schedule');
+        renderCards(Array.isArray(data.publications) ? data.publications : []);
+      } catch (err) {
+        content.innerHTML = `<div class="state error">Unable to load published links. ${esc(err.message || '')}</div>`;
+      }
+    }
+    document.addEventListener('DOMContentLoaded', load);
+  </script>
+</body>
+</html>

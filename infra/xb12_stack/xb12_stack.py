@@ -48,6 +48,9 @@ EMBED_DIM = "1024"
 SIMILARITY_MIN_SCORE = "0.37"
 # New table (created by this stack) that stores finalized class submissions.
 SUBMISSIONS_TABLE = "Xb12-submissions"
+# New table (created by this stack) that stores links published from approved
+# submissions to the mock destination pages (Course Schedule, Bookstore, MIS).
+PUBLISHED_LINKS_TABLE = "PublishedLinks-index"
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _BACKEND = os.path.abspath(os.path.join(_HERE, "..", "..", "backend"))
@@ -169,6 +172,31 @@ class Xb12Stack(Stack):
         )
         submissions_table.grant_read_write_data(lambda_role)
 
+        # ---- Published-links table (new) ---------------------------------
+        # One row per (submission, destination, normalized URL). PK `id` is the
+        # deterministic dedup key; the destination-index GSI lets the read
+        # endpoint fetch a destination's links newest-first.
+        published_links_table = dynamodb.Table(
+            self,
+            "Xb12PublishedLinksTable",
+            table_name=PUBLISHED_LINKS_TABLE,
+            partition_key=dynamodb.Attribute(
+                name="id", type=dynamodb.AttributeType.STRING
+            ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.RETAIN,  # keep published records if torn down
+        )
+        published_links_table.add_global_secondary_index(
+            index_name="destination-index",
+            partition_key=dynamodb.Attribute(
+                name="destination", type=dynamodb.AttributeType.STRING
+            ),
+            sort_key=dynamodb.Attribute(
+                name="publishedAt", type=dynamodb.AttributeType.STRING
+            ),
+        )
+        published_links_table.grant_read_write_data(lambda_role)
+
         # ---- Shared code layer -------------------------------------------
         common_layer = _lambda.LayerVersion(
             self,
@@ -182,6 +210,7 @@ class Xb12Stack(Stack):
             "RESOURCE_TABLE": RESOURCE_TABLE,
             "HISTORY_TABLE": HISTORY_TABLE,
             "SUBMISSIONS_TABLE": SUBMISSIONS_TABLE,
+            "PUBLISHED_LINKS_TABLE": PUBLISHED_LINKS_TABLE,
             "AOSS_ENDPOINT": AOSS_ENDPOINT,
             "AOSS_INDEX": AOSS_INDEX,
             "LOW_COST_THRESHOLD": LOW_COST_THRESHOLD,
@@ -215,6 +244,8 @@ class Xb12Stack(Stack):
         course_fn = make_fn("CourseResourcesFn", "course_resources")
         submit_fn = make_fn("SubmitClassFn", "submit_class", timeout=60)
         submissions_fn = make_fn("SubmissionsFn", "submissions")
+        publish_fn = make_fn("PublishSubmissionFn", "publish_submission")
+        published_links_fn = make_fn("PublishedLinksFn", "published_links")
 
         # ---- REST API ----------------------------------------------------
         api = apigw.RestApi(
@@ -258,6 +289,19 @@ class Xb12Stack(Stack):
         submission_item.add_method("GET", apigw.LambdaIntegration(submissions_fn))
         submission_item.add_method("PUT", apigw.LambdaIntegration(submissions_fn))
         submission_item.add_method("DELETE", apigw.LambdaIntegration(submissions_fn))
+
+        # /admin/submissions/{submissionId}/publish (POST) - publish approved
+        # links to the selected mock destinations. Namespaced under /admin so a
+        # Cognito (or other) admin authorizer can later be attached here.
+        admin_res = api.root.add_resource("admin")
+        admin_submissions_res = admin_res.add_resource("submissions")
+        admin_submission_item = admin_submissions_res.add_resource("{submissionId}")
+        publish_res = admin_submission_item.add_resource("publish")
+        publish_res.add_method("POST", apigw.LambdaIntegration(publish_fn))
+
+        # /published-links (GET) - read links for a mock destination
+        published_res = api.root.add_resource("published-links")
+        published_res.add_method("GET", apigw.LambdaIntegration(published_links_fn))
 
         # ---- Frontend hosting: S3 (private) + CloudFront (OAC) -----------
         site_bucket = s3.Bucket(
