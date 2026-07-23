@@ -315,33 +315,9 @@ def handler(event, context):
         if error.startswith("Failed to write"):
             return server_error(error)
         return bad_request(error)
-
-    # Classify the submission as "Submitted" now that its links have been sent.
-    result["publishedDestinations"] = _mark_submission_submitted(
-        sub_id, submission, result["destinations"], result["publishedAt"]
-    )
-    result["linksSent"] = True
+    # The admin dashboard classifies entries as "Submitted" from live
+    # published-links state, so no flag is stamped on the submission here.
     return ok(result)
-
-
-def _mark_submission_submitted(sub_id, submission, destinations, when):
-    """
-    Stamp the submission record so the admin dashboard can classify it as
-    "Submitted" once its links have been sent. Accumulates the set of
-    destinations across partial publishes. Best-effort: a failure here does not
-    fail the publish (the links are already written).
-    """
-    existing = list(submission.get("publishedDestinations") or [])
-    merged = list(dict.fromkeys(existing + list(destinations)))
-    try:
-        _submissions.update_item(
-            Key={"id": sub_id},
-            UpdateExpression="SET linksSent = :t, linksSentAt = :a, publishedDestinations = :d",
-            ExpressionAttributeValues={":t": True, ":a": when, ":d": merged},
-        )
-    except Exception:  # noqa: BLE001 - classification stamp is best-effort
-        pass
-    return merged
 
 
 def _resolve_publisher(event):

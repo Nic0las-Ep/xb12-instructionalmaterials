@@ -952,12 +952,40 @@ async function refreshFromStorage() {
     console.error('OER Admin: could not load submissions from API:', err);
     SUBMISSIONS = [];
   }
+  await loadPublishedMap();
   updateStats();
   applyFilters();
 }
 
 /* Live working copy — populated at DOMContentLoaded via the API. */
 let SUBMISSIONS = [];
+
+/* Live publication state: submissionId -> { destinations:[...], publishedAt }.
+   Rebuilt from the published-links endpoint so the "Submitted" classification
+   always reflects what is actually published right now (not a stored flag). */
+let PUBLISHED_MAP = {};
+
+async function loadPublishedMap() {
+  const dests = [
+    { id: 'course-schedule' }, { id: 'bookstore' }, { id: 'mis-reporting' },
+  ];
+  const map = {};
+  await Promise.all(dests.map(async (d) => {
+    try {
+      const r = await fetch(`${API_BASE}/published-links?destination=${encodeURIComponent(d.id)}`, { cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json();
+      (Array.isArray(data.publications) ? data.publications : []).forEach(p => {
+        const id = p.submissionId;
+        if (!id) return;
+        if (!map[id]) map[id] = { destinations: [], publishedAt: '' };
+        if (!map[id].destinations.includes(d.id)) map[id].destinations.push(d.id);
+        if ((p.publishedAt || '') > map[id].publishedAt) map[id].publishedAt = p.publishedAt || '';
+      });
+    } catch (_) { /* ignore per-destination errors */ }
+  }));
+  PUBLISHED_MAP = map;
+}
 
 
 /* ================================================================
@@ -1329,37 +1357,40 @@ function refreshPublishControls(s) {
   loadPublicationStatus(s);
 }
 
-/* Query each destination and mark those that already contain this submission. */
+/* Refresh live publication state, then update the modal's per-destination list
+   and the table classification from the shared map. */
 async function loadPublicationStatus(s) {
-  const targetId = s.id;
-  let anyPublished = false;
-  await Promise.all(PUBLISH_DESTINATIONS.map(async (d) => {
-    try {
-      const r = await fetch(`${API_BASE}/published-links?destination=${encodeURIComponent(d.id)}`, { cache: 'no-store' });
-      if (!r.ok) return;
-      const data = await r.json();
-      const pubs = Array.isArray(data.publications) ? data.publications : [];
-      const match = pubs.find(p => p.submissionId === targetId);
-      if (match) {
-        anyPublished = true;
-        // Guard against a stale modal (user may have moved on)
-        if (currentSubmissionId !== targetId) return;
-        const li = document.querySelector(`#pub-status-list li[data-dest="${d.id}"]`);
-        if (li) {
-          li.classList.add('published');
-          const when = formatDate(match.publishedAt);
-          li.querySelector('.pub-state').textContent = when ? `Published ${when}` : 'Published';
-        }
-      }
-    } catch (_) { /* ignore per-destination errors */ }
-  }));
+  await loadPublishedMap();
+  updatePubStatusList(s);
+  applyFilters();  // keep the table's "Submitted" classification in sync
+}
 
-  // If the submission was already published but is no longer Approved, warn
-  // (do NOT auto-unpublish).
-  if (currentSubmissionId === targetId && anyPublished && s.status !== 'Approved') {
-    const warning = document.getElementById('pub-warning');
+/* Update the modal's "Published to:" list + warning from PUBLISHED_MAP. */
+function updatePubStatusList(s) {
+  if (!s || currentSubmissionId !== s.id) return;
+  const entry = PUBLISHED_MAP[s.id];
+  const dests = entry ? entry.destinations : [];
+  PUBLISH_DESTINATIONS.forEach(d => {
+    const li = document.querySelector(`#pub-status-list li[data-dest="${d.id}"]`);
+    if (!li) return;
+    const stateEl = li.querySelector('.pub-state');
+    if (dests.includes(d.id)) {
+      li.classList.add('published');
+      const when = formatDate(entry.publishedAt);
+      stateEl.textContent = when ? `Published ${when}` : 'Published';
+    } else {
+      li.classList.remove('published');
+      stateEl.textContent = 'Not yet published';
+    }
+  });
+
+  // If the submission is published but no longer Approved, warn (never auto-unpublish).
+  const warning = document.getElementById('pub-warning');
+  if (dests.length && s.status !== 'Approved') {
     warning.textContent = 'This submission was already published. Changing its status does not remove previously published links.';
     warning.hidden = false;
+  } else {
+    warning.hidden = true;
   }
 }
 
@@ -1452,20 +1483,11 @@ async function confirmPublish() {
       (data.skippedDuplicateCount ? ` · Skipped duplicates: <strong>${Number(data.skippedDuplicateCount)}</strong>` : '') +
       `<br>Destinations: ${esc(destLabels)}<br>When: ${esc(when)}`;
 
-    // Classify this entry as "Submitted" (links sent) in memory and refresh
-    // the table so the badge updates immediately.
-    const idx = SUBMISSIONS.findIndex(x => x.id === s.id);
-    if (idx !== -1) {
-      SUBMISSIONS[idx].linksSent = true;
-      SUBMISSIONS[idx].linksSentAt = data.publishedAt || new Date().toISOString();
-      if (Array.isArray(data.publishedDestinations)) {
-        SUBMISSIONS[idx].publishedDestinations = data.publishedDestinations;
-      }
-      applyFilters();
-    }
-
-    // Refresh the publication-status list.
-    loadPublicationStatus(s);
+    // Refresh live publication state, the per-destination list, and the table
+    // so the "Submitted" classification reflects what is actually published.
+    await loadPublishedMap();
+    applyFilters();
+    updatePubStatusList(s);
   } catch (err) {
     showError(err.message);
   } finally {
@@ -1603,9 +1625,11 @@ function statusBadge(status) {
    the destination pages, otherwise "Not sent". Driven by the submission's
    linksSent flag (stamped by the publish backend). */
 function linksSentBadge(s) {
-  if (s && s.linksSent) {
-    const when = formatDate(s.linksSentAt);
-    const title = when ? `Links sent ${when}` : 'Links sent';
+  const entry = s && PUBLISHED_MAP[s.id];
+  if (entry && entry.destinations.length) {
+    const when = formatDate(entry.publishedAt);
+    const title = (when ? `Links sent ${when}` : 'Links sent') +
+      ` · ${entry.destinations.length} destination${entry.destinations.length === 1 ? '' : 's'}`;
     return `<span class="badge badge-submitted" title="${esc(title)}">&#10003; Submitted</span>`;
   }
   return `<span class="badge badge-unsent">Not sent</span>`;
