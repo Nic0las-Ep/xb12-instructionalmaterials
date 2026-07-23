@@ -330,7 +330,7 @@
     if ($('quarter')) $('quarter').value = '';
 
     // Search / filters
-    ['search-q', 'filter-class', 'filter-subject'].forEach((id) => { if ($(id)) $(id).value = ''; });
+    ['search-q', 'filter-class', 'filter-subject', 'filter-professor'].forEach((id) => { if ($(id)) $(id).value = ''; });
     if ($('filter-xb12')) $('filter-xb12').value = '';
     if ($('filter-type')) $('filter-type').value = '';
     if ($('search-results')) $('search-results').innerHTML = '';
@@ -373,6 +373,7 @@
       const res = await API.searchResources({
         q: $('search-q').value.trim(),
         className: $('filter-class').value.trim(),
+        professor: $('filter-professor').value.trim(),
         xb12: $('filter-xb12').value,
         materialType: $('filter-type').value,
         subject: $('filter-subject').value.trim(),
@@ -678,6 +679,7 @@
     [
       'isbn-input', 'platform-url', 'res-title', 'res-author', 'res-publisher',
       'res-subject', 'res-price', 'search-q', 'filter-class', 'filter-subject',
+      'filter-professor',
     ].forEach((id) => { if ($(id)) $(id).value = ''; });
 
     $('btn-load-course').addEventListener('click', loadCourse);

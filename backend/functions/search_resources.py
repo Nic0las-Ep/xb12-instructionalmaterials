@@ -78,6 +78,28 @@ def _class_filter(raw):
     }
 
 
+def _professor_filter(raw):
+    """
+    Match resources previously used by a given professor. The professor list
+    (usedByProfessors) is populated when a class is submitted, so this surfaces
+    materials that instructor has adopted before.
+    """
+    value = raw.strip()
+    if not value:
+        return None
+    lower = value.lower()
+    return {
+        "bool": {
+            "should": [
+                {"term": {"usedByProfessors.keyword": value}},
+                {"match_phrase": {"usedByProfessors": value}},
+                {"wildcard": {"usedByProfessors.keyword": {"value": f"*{lower}*", "case_insensitive": True}}},
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+
 def handler(event, context):
     if http_method(event) == "OPTIONS":
         return respond(200, {})
@@ -103,6 +125,12 @@ def handler(event, context):
     class_raw = params.get("classNumber") or params.get("className")
     if class_raw:
         clause = _class_filter(class_raw)
+        if clause:
+            filters.append(clause)
+    # Professor-name filter matches the usedByProfessors usage history.
+    professor_raw = params.get("professor") or params.get("professorName")
+    if professor_raw:
+        clause = _professor_filter(professor_raw)
         if clause:
             filters.append(clause)
 

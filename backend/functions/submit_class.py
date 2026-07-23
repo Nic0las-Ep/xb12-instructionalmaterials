@@ -136,11 +136,14 @@ def _clean(v):
     return v
 
 
-def _record_usage(resource, course_ref, course_key):
-    """Append this section to a catalog resource's usage history (DynamoDB)."""
+def _record_usage(resource, course_ref, course_key, professor=None):
+    """Append this section (and professor) to a catalog resource's usage history."""
     used = list(resource.get("usedInCourses") or [])
     if course_key not in used:
         used.append(course_key)
+    professors = list(resource.get("usedByProfessors") or [])
+    if professor and professor not in ("", "Unknown") and professor not in professors:
+        professors.append(professor)
     history = list(resource.get("courseHistory") or [])
     key_tuple = (
         course_ref["coursePrefix"],
@@ -163,8 +166,8 @@ def _record_usage(resource, course_ref, course_key):
     if not exists:
         history.append(course_ref)
 
-    expr = "SET usedInCourses = :u, courseHistory = :h"
-    values = {":u": used, ":h": history}
+    expr = "SET usedInCourses = :u, courseHistory = :h, usedByProfessors = :p"
+    values = {":u": used, ":h": history, ":p": professors}
     if not resource.get("classNumber"):
         expr += ", classNumber = :c"
         values[":c"] = course_key
@@ -175,6 +178,7 @@ def _record_usage(resource, course_ref, course_key):
     )
     resource["usedInCourses"] = used
     resource["courseHistory"] = history
+    resource["usedByProfessors"] = professors
     return resource
 
 
@@ -187,6 +191,7 @@ def _reindex_resource(client, resource):
             for k in ("title", "author", "publisher", "subject", "materialType", "description")
         ]
         parts.extend(doc.get("usedInCourses") or [])
+        parts.extend(doc.get("usedByProfessors") or [])
         doc["embedding"] = embeddings.embed_text(" ".join(str(p) for p in parts if p))
         # Remove any existing docs for this id, then index the fresh one.
         found = client.search(
@@ -266,6 +271,7 @@ def handler(event, context):
         "year": int(year) if str(year).isdigit() else year,
     }
     course_key = f"{prefix} {number}"
+    respondent = (first + " " + last).strip() or "Unknown"
 
     # Resource-index usage write-back (+ best-effort OpenSearch refresh).
     client = None
@@ -289,7 +295,7 @@ def handler(event, context):
         res = _find_resource(a.get("resourceId"), a.get("ISBN"), a.get("url"))
         if res:
             try:
-                res = _record_usage(res, course_ref, course_key)
+                res = _record_usage(res, course_ref, course_key, respondent)
                 updated_resources.append(res["id"])
                 if client:
                     _reindex_resource(client, res)
