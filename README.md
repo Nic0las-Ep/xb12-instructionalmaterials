@@ -176,7 +176,17 @@ one publication, so no grouping is needed.
   course, section, CRN, the XB12 data-entry code, material links, reported date,
   source submission id), with a reporting-metadata panel describing the XB
   domain and the MIS data-file submission workflow (data coordinator →
-  district/campus IT).
+  district/campus IT). A **Download MIS data file (.txt)** button exports the
+  records as a fixed-width 80-column flat file (header/detail/trailer), one
+  detail record per section:
+
+  ```
+  [1-2] XB  [3-5] college  [6-11] term  [12-16] CRN  [17-24] subject
+  [25-32] course  [33-38] section  [39] XB12  [40-80] reference
+  ```
+
+All three mock pages use the app's shared design system (`css/styles.css`, De
+Anza burgundy/gold branding) so they match the survey and admin pages.
 
 > Price is captured on submission going forward; submissions created before this
 > was added show no price until they are re-submitted through the form.

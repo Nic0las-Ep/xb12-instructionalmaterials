@@ -4,78 +4,41 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Campus Bookstore — Approved Course Material Links</title>
+  <link rel="stylesheet" href="css/styles.css" />
   <style>
-    :root {
-      --bs-primary: #b45309;   /* amber-700 */
-      --bs-accent:  #d97706;   /* amber-600 */
-      --bs-deep:    #92400e;   /* amber-800 */
-      --bs-bg:      #fffbeb;   /* amber-50 */
-      --card:       #ffffff;
-      --border:     #fde68a;
-      --text:       #1c1917;
-      --muted:      #78716c;
-      --danger:     #dc2626;
-      --radius:     10px;
-      --font:       'Segoe UI', Arial, sans-serif;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font); background: var(--bs-bg); color: var(--text); min-height: 100vh; font-size: 14px; }
-
-    .site-header {
-      background: linear-gradient(135deg, var(--bs-deep), var(--bs-accent));
-      color: #fff; padding: 1.1rem 1.6rem;
-    }
-    .site-header h1 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; gap: 0.5rem; }
-    .site-header p { opacity: 0.92; font-size: 0.88rem; margin-top: 2px; }
-
-    .demo-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; background: #fff;
-      border-bottom: 1px solid var(--border); padding: 0.55rem 1.6rem; }
+    /* Page-specific bits, built on the shared design tokens */
+    .demo-nav { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; background: #fff;
+      border-bottom: 1px solid var(--border); padding: 0.5rem 2rem; }
     .demo-nav .demo-nav-label { font-size: 0.7rem; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.3rem; }
-    .demo-nav a { font-size: 0.82rem; color: var(--bs-primary); text-decoration: none; font-weight: 600;
-      padding: 4px 10px; border-radius: 6px; }
-    .demo-nav a:hover { background: var(--bs-bg); }
-    .demo-nav a[aria-current="page"] { background: var(--bs-primary); color: #fff; }
+    .demo-nav a { font-size: 0.82rem; color: var(--burg); text-decoration: none; font-weight: 600;
+      padding: 4px 10px; border-radius: 6px; border: 1px solid transparent; }
+    .demo-nav a:hover { background: var(--burg-light); border-color: var(--burg); }
+    .demo-nav a[aria-current="page"] { background: var(--burg); color: #fff; }
 
-    .page { max-width: 1150px; margin: 0 auto; padding: 1.6rem; }
-    .intro { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.1rem; }
-
-    .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    .filters label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; font-weight: 700;
-      color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .filters input { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.88rem; min-width: 170px; }
-    .filters input:focus { outline: none; border-color: var(--bs-accent); }
+    .isbn { font-family: 'Courier New', monospace; font-size: 0.83rem; }
+    .price { font-weight: 700; white-space: nowrap; }
+    .price.free { color: var(--success); }
+    .muted-dash { color: #cbd5e1; }
+    td a { color: var(--burg); text-decoration: none; word-break: break-all; }
+    td a:hover { text-decoration: underline; }
 
     .state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
     .state.error { color: var(--danger); }
     .spinner { width: 28px; height: 28px; border: 3px solid var(--border);
-      border-top-color: var(--bs-accent); border-radius: 50%; margin: 0 auto 0.8rem;
+      border-top-color: var(--burg); border-radius: 50%; margin: 0 auto 0.8rem;
       animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    .row-count { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
-    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    thead th { background: var(--bs-deep); color: #fff; text-align: left; padding: 0.6rem 0.8rem;
-      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
-    tbody td { padding: 0.6rem 0.8rem; border-top: 1px solid var(--border); vertical-align: top; }
-    tbody tr:nth-child(even) { background: #fffdf5; }
-    .course-code { font-weight: 700; color: var(--bs-deep); white-space: nowrap; }
-    .crn-badge { background: var(--bs-primary); color: #fff; border-radius: 4px; padding: 1px 7px; font-weight: 600; font-size: 0.8rem; }
-    .isbn { font-family: 'Courier New', monospace; font-size: 0.82rem; }
-    td a { color: var(--bs-accent); text-decoration: none; word-break: break-all; display: inline-flex; align-items: center; gap: 5px; }
-    td a:hover { text-decoration: underline; }
-    .price { font-weight: 700; white-space: nowrap; }
-    .price.free { color: #166534; }
-    .muted-dash { color: #cbd5e1; }
-    footer { text-align: center; color: var(--muted); font-size: 0.78rem; padding: 1.5rem; }
   </style>
 </head>
 <body>
   <header class="site-header" role="banner">
-    <h1><span aria-hidden="true">🛒</span> Campus Bookstore — Approved Course Material Links</h1>
-    <p>Approved textbooks (by ISBN) and learning-platform links, with price, per section.</p>
+    <div class="header-left">
+      <img class="header-logo" src="img/deanza-logo.png" alt="Foothill - De Anza Community College District" />
+    </div>
+    <span class="header-badge header-badge--ribbon">Bookstore</span>
   </header>
+  <div class="accent-bar"></div>
 
   <nav class="demo-nav" aria-label="Demo navigation">
     <span class="demo-nav-label">Demo</span>
@@ -87,30 +50,39 @@
   </nav>
 
   <main class="page" role="main">
-    <p class="intro">
-      Each row is a submitted course material linked to its class, professor, CRN, and section.
-      Textbook ISBNs and learning-platform URLs are shown in separate columns with the price.
-      This is a demonstration mockup and is not connected to a real bookstore system.
-    </p>
-
-    <div class="filters">
-      <label>Class
-        <input type="text" id="filter-course" placeholder="e.g. ACCT 01A" autocomplete="off" />
-      </label>
-      <label>CRN
-        <input type="text" id="filter-crn" placeholder="e.g. 12345" autocomplete="off" />
-      </label>
+    <div class="hero" style="border-radius: var(--radius); margin-bottom: 1.6rem;">
+      <h1>Campus Bookstore — Approved Course Material Links</h1>
+      <p>
+        Approved textbooks (by <strong>ISBN</strong>) and learning-platform links, with price,
+        for each course section. This is a demonstration mockup and is not connected to a real
+        bookstore system.
+      </p>
     </div>
 
-    <div id="content" aria-live="polite">
-      <div class="state" id="loading">
-        <div class="spinner" aria-hidden="true"></div>
-        Loading approved course materials…
+    <div class="main-card">
+      <div class="main-card-header">
+        <span class="main-card-title">Approved Course Materials</span>
+      </div>
+
+      <div class="filters">
+        <div class="filter-group">
+          <label for="filter-course">Class</label>
+          <input type="text" id="filter-course" placeholder="e.g. ACCT 01A" autocomplete="off" />
+        </div>
+        <div class="filter-group">
+          <label for="filter-crn">CRN</label>
+          <input type="text" id="filter-crn" placeholder="e.g. 12345" autocomplete="off" />
+        </div>
+      </div>
+
+      <div id="content" aria-live="polite">
+        <div class="state" id="loading">
+          <div class="spinner" aria-hidden="true"></div>
+          Loading approved course materials…
+        </div>
       </div>
     </div>
   </main>
-
-  <footer>Campus Bookstore — demonstration mockup only.</footer>
 
   <script src="js/api.js"></script>
   <script>
@@ -185,7 +157,7 @@
       const body = filtered.map(r => {
         const isbn = r.isbn ? `<span class="isbn">${esc(r.isbn)}</span>` : '<span class="muted-dash">—</span>';
         const url = r.url
-          ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">↗</span>${esc(r.url)}</a>`
+          ? `<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.url)}</a>`
           : '<span class="muted-dash">—</span>';
         const priceStr = fmtPrice(r.price);
         const price = priceStr
@@ -193,9 +165,9 @@
           : '<span class="muted-dash">—</span>';
         return `
           <tr>
-            <td class="course-code">${esc(r.course) || '—'}</td>
-            <td>${esc(r.professor) || '—'}</td>
-            <td>${r.crn ? `<span class="crn-badge">${esc(r.crn)}</span>` : '—'}</td>
+            <td class="td-name">${esc(r.course) || '—'}</td>
+            <td class="td-course">${esc(r.professor) || '—'}</td>
+            <td>${esc(r.crn) || '—'}</td>
             <td>${esc(r.section) || '—'}</td>
             <td>${isbn}</td>
             <td>${url}</td>
@@ -204,7 +176,7 @@
       }).join('');
 
       content.innerHTML = `
-        <div class="row-count">${filtered.length} material${filtered.length === 1 ? '' : 's'}</div>
+        <div class="results-meta">${filtered.length} material${filtered.length === 1 ? '' : 's'}</div>
         <div class="table-wrap">
           <table>
             <thead>

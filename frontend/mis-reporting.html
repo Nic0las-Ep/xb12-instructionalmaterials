@@ -4,103 +4,65 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MIS Reporting — XB Section Data Record (Instructional-Material-Cost)</title>
+  <link rel="stylesheet" href="css/styles.css" />
   <style>
-    :root {
-      --mis-primary: #1e40af;  /* blue-800 */
-      --mis-accent:  #1d4ed8;  /* blue-700 */
-      --mis-slate:   #334155;  /* slate-700 */
-      --mis-bg:      #f8fafc;  /* slate-50 */
-      --card:        #ffffff;
-      --border:      #e2e8f0;
-      --text:        #0f172a;
-      --muted:       #64748b;
-      --danger:      #dc2626;
-      --radius:      8px;
-      --font:        'Segoe UI', Arial, sans-serif;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font); background: var(--mis-bg); color: var(--text); min-height: 100vh; font-size: 14px; }
-
-    .site-header {
-      background: linear-gradient(135deg, #0f172a, var(--mis-slate));
-      color: #fff; padding: 1.1rem 1.6rem;
-    }
-    .site-header h1 { font-size: 1.28rem; font-weight: 800; letter-spacing: -0.01em; display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
-    .site-header p { opacity: 0.85; font-size: 0.86rem; margin-top: 3px; }
-    .compliance-badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
-      font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-      padding: 3px 9px; border-radius: 999px; }
-
-    .demo-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; background: #fff;
-      border-bottom: 1px solid var(--border); padding: 0.55rem 1.6rem; }
+    /* Page-specific bits, built on the shared design tokens */
+    .demo-nav { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; background: #fff;
+      border-bottom: 1px solid var(--border); padding: 0.5rem 2rem; }
     .demo-nav .demo-nav-label { font-size: 0.7rem; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.05em; margin-right: 0.3rem; }
-    .demo-nav a { font-size: 0.82rem; color: var(--mis-accent); text-decoration: none; font-weight: 600;
-      padding: 4px 10px; border-radius: 6px; }
-    .demo-nav a:hover { background: var(--mis-bg); }
-    .demo-nav a[aria-current="page"] { background: var(--mis-primary); color: #fff; }
+    .demo-nav a { font-size: 0.82rem; color: var(--burg); text-decoration: none; font-weight: 600;
+      padding: 4px 10px; border-radius: 6px; border: 1px solid transparent; }
+    .demo-nav a:hover { background: var(--burg-light); border-color: var(--burg); }
+    .demo-nav a[aria-current="page"] { background: var(--burg); color: #fff; }
 
-    .mock-banner { background: #fef3c7; border-bottom: 1px solid #fde68a; color: #92400e;
-      font-size: 0.82rem; font-weight: 600; text-align: center; padding: 0.5rem 1rem; }
+    .mock-banner { background: var(--gold-light); border: 1px solid rgba(233,196,81,0.5); color: #92650a;
+      font-size: 0.82rem; font-weight: 600; text-align: center; padding: 0.5rem 1rem; border-radius: var(--radius);
+      margin-bottom: 1.2rem; }
 
-    .page { max-width: 1150px; margin: 0 auto; padding: 1.6rem; }
-    .intro { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.1rem; }
-
-    /* Reporting metadata panel (regulatory framing) */
-    .meta-panel { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--mis-primary);
-      border-radius: var(--radius); padding: 0.9rem 1.1rem; margin-bottom: 1.2rem; }
-    .meta-panel h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mis-primary);
-      margin-bottom: 0.7rem; }
+    /* Reporting metadata panel */
+    .meta-panel { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--burg);
+      border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.9rem 1.1rem; margin-bottom: 1.2rem; }
+    .meta-panel h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--burg); margin-bottom: 0.7rem; }
     .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0.7rem 1.4rem; }
     .meta-item .k { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
     .meta-item .v { font-size: 0.86rem; color: var(--text); margin-top: 2px; }
-    .meta-item .v strong { color: var(--mis-primary); }
+    .meta-item .v strong { color: var(--burg); }
+    .file-note { margin-top: 0.8rem; font-size: 0.76rem; color: var(--muted); border-top: 1px dashed var(--border); padding-top: 0.6rem; }
+    .file-note code { font-family: 'Courier New', monospace; color: var(--text); }
 
-    .filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: flex-end; }
-    .filters label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; font-weight: 700;
-      color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .filters input { padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.88rem; min-width: 180px; }
-    .filters input:focus { outline: none; border-color: var(--mis-accent); }
+    td a { color: var(--burg); text-decoration: none; word-break: break-all; }
+    td a:hover { text-decoration: underline; }
+    .sub-id { font-family: 'Courier New', monospace; font-size: 0.76rem; color: var(--muted); }
+    .rec-type { display: inline-block; font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: 700;
+      background: var(--burg-light); color: var(--burg); border: 1px solid rgba(127,24,46,0.25); border-radius: 4px; padding: 1px 6px; }
+    .links-list { display: flex; flex-direction: column; gap: 3px; }
+    .links-list .none { color: #94a3b8; }
+    /* XB12 single-character Section data element cell */
+    .mis-de { display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border: 1.5px solid var(--burg); border-radius: 5px;
+      background: var(--burg-light); color: var(--burg); font-family: 'Courier New', monospace;
+      font-weight: 700; font-size: 0.95rem; text-transform: uppercase; }
+    .mis-de.empty { border-style: dashed; border-color: var(--border); background: #f8fafc; color: var(--muted); }
+    thead th .de-hint { display: block; font-size: 0.62rem; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0; }
 
     .state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
     .state.error { color: var(--danger); }
     .spinner { width: 28px; height: 28px; border: 3px solid var(--border);
-      border-top-color: var(--mis-accent); border-radius: 50%; margin: 0 auto 0.8rem;
+      border-top-color: var(--burg); border-radius: 50%; margin: 0 auto 0.8rem;
       animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    .record-caption { font-size: 0.78rem; color: var(--muted); margin-bottom: 0.4rem; display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: baseline; }
-    .record-caption strong { color: var(--text); }
-    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    thead th { background: var(--mis-primary); color: #fff; text-align: left; padding: 0.6rem 0.8rem;
-      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; position: sticky; top: 0; white-space: nowrap; }
-    tbody td { padding: 0.6rem 0.8rem; border-top: 1px solid var(--border); vertical-align: top; }
-    tbody tr:nth-child(even) { background: #fbfcfe; }
-    td a { color: var(--mis-accent); text-decoration: none; word-break: break-all; }
-    td a:hover { text-decoration: underline; }
-    .sub-id { font-family: 'Courier New', monospace; font-size: 0.76rem; color: var(--muted); }
-    .record-type { display: inline-block; font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: 700;
-      background: #eef2ff; color: var(--mis-primary); border: 1px solid #c7d2fe; border-radius: 4px; padding: 1px 6px; }
-    .links-list { display: flex; flex-direction: column; gap: 3px; }
-    .links-list .none { color: #94a3b8; }
-    /* XB12 data-entry cell — a single-character MIS Section data element */
-    .mis-de { display: inline-flex; align-items: center; justify-content: center;
-      width: 30px; height: 30px; border: 1.5px solid var(--mis-primary); border-radius: 5px;
-      background: #eff6ff; color: var(--mis-primary); font-family: 'Courier New', monospace;
-      font-weight: 700; font-size: 0.95rem; text-transform: uppercase; }
-    .mis-de.empty { border-style: dashed; border-color: var(--border); background: #f8fafc; color: var(--muted); }
-    thead th .de-hint { display: block; font-size: 0.62rem; font-weight: 600; opacity: 0.8; text-transform: none; letter-spacing: 0; }
-    .row-count { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
-    footer { text-align: center; color: var(--muted); font-size: 0.78rem; padding: 1.5rem; }
+    .btn-view:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body>
   <header class="site-header" role="banner">
-    <h1><span aria-hidden="true">🏛️</span> MIS Reporting — XB Section Data Record
-      <span class="compliance-badge">XB Domain · DED# XB12</span></h1>
-    <p>California Community Colleges MIS · Section Data Records · INSTRUCTIONAL-MATERIAL-COST (XB12)</p>
+    <div class="header-left">
+      <img class="header-logo" src="img/deanza-logo.png" alt="Foothill - De Anza Community College District" />
+    </div>
+    <span class="header-badge header-badge--ribbon">XB · DED# XB12</span>
   </header>
+  <div class="accent-bar"></div>
 
   <nav class="demo-nav" aria-label="Demo navigation">
     <span class="demo-nav-label">Demo</span>
@@ -111,16 +73,19 @@
     <a href="mis-reporting.html" aria-current="page">MIS Reporting Mock</a>
   </nav>
 
-  <div class="mock-banner" role="note">
-    Mock MIS destination — simulated XB Section Data Record. Demonstration only; not a live CCCCO MIS submission.
-  </div>
-
   <main class="page" role="main">
-    <p class="intro">
-      Each row below is one <strong>Section Data Record</strong> in the <strong>XB reporting domain</strong>,
-      carrying the section's <strong>XB12 INSTRUCTIONAL-MATERIAL-COST</strong> value. In production these records
-      are compiled into a standard MIS data file and submitted through the college's normal reporting channel.
-    </p>
+    <div class="hero" style="border-radius: var(--radius); margin-bottom: 1.6rem;">
+      <h1>MIS Reporting — XB Section Data Record</h1>
+      <p>
+        California Community Colleges MIS · <strong>XB reporting domain</strong> · Section Data Records ·
+        <strong>XB12</strong> Instructional-Material-Cost. Each row is one section record carrying the
+        reportable XB12 value.
+      </p>
+    </div>
+
+    <div class="mock-banner" role="note">
+      Mock MIS destination — simulated XB Section Data Record. Demonstration only; not a live CCCCO MIS submission.
+    </div>
 
     <section class="meta-panel" aria-label="Reporting metadata">
       <h2>Reporting metadata</h2>
@@ -142,26 +107,40 @@
           <div class="v">Uploaded &amp; processed by district / campus <strong>Information Technology</strong></div>
         </div>
       </div>
+      <div class="file-note">
+        Downloadable data file uses a fixed-width 80-column layout, one record per section:
+        <code>[1-2] XB · [3-5] college · [6-11] term · [12-16] CRN · [17-24] subject · [25-32] course · [33-38] section · [39] XB12 · [40-80] reference</code>,
+        with header (<code>HDR</code>) and trailer (<code>TRL</code>) records.
+      </div>
     </section>
 
-    <div class="filters">
-      <label>Course
-        <input type="text" id="filter-course" placeholder="e.g. ENGL 1A" autocomplete="off" />
-      </label>
-      <label>CRN
-        <input type="text" id="filter-crn" placeholder="e.g. 12345" autocomplete="off" />
-      </label>
-    </div>
+    <div class="main-card">
+      <div class="main-card-header">
+        <span class="main-card-title">XB — Section Data Records</span>
+        <button class="btn-view" id="btn-download" type="button" onclick="downloadMisFile()" disabled>
+          Download MIS data file (.txt)
+        </button>
+      </div>
 
-    <div id="content" aria-live="polite">
-      <div class="state" id="loading">
-        <div class="spinner" aria-hidden="true"></div>
-        Loading XB Section Data Records…
+      <div class="filters">
+        <div class="filter-group">
+          <label for="filter-course">Course</label>
+          <input type="text" id="filter-course" placeholder="e.g. ENGL 1A" autocomplete="off" />
+        </div>
+        <div class="filter-group">
+          <label for="filter-crn">CRN</label>
+          <input type="text" id="filter-crn" placeholder="e.g. 12345" autocomplete="off" />
+        </div>
+      </div>
+
+      <div id="content" aria-live="polite">
+        <div class="state" id="loading">
+          <div class="spinner" aria-hidden="true"></div>
+          Loading XB Section Data Records…
+        </div>
       </div>
     </div>
   </main>
-
-  <footer>MIS Reporting — demonstration mockup only. Simulated XB Section Data Record; not a real CCCCO MIS integration.</footer>
 
   <script src="js/api.js"></script>
   <script>
@@ -179,12 +158,13 @@
       return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
-    /* One Section Data Record per published section. The XB12 value is a
-       section-level element, so each section appears once with its material
-       links listed within the record. */
+    /* One Section Data Record per published section (XB12 is a section-level
+       element), listing the section's material links within the record. */
     function buildRecords(publications) {
       return publications.map(p => ({
         course: [p.coursePrefix, p.courseNumber].filter(Boolean).join(' '),
+        coursePrefix: p.coursePrefix || '',
+        courseNumber: p.courseNumber || '',
         section: p.section || '',
         crn: p.crn || '',
         xb12Code: p.xb12Code || '',
@@ -204,6 +184,8 @@
         (!courseQ || r.course.toLowerCase().includes(courseQ)) &&
         (!crnQ || String(r.crn).toLowerCase().includes(crnQ))
       );
+
+      document.getElementById('btn-download').disabled = RECORDS.length === 0;
 
       if (!RECORDS.length) {
         content.innerHTML = '<div class="state">No XB Section Data Records have been reported.</div>';
@@ -225,23 +207,19 @@
           : '<span class="none">None</span>';
         return `
         <tr>
-          <td><span class="record-type" title="Section Data Record">SX</span></td>
-          <td>${esc(r.course) || '—'}</td>
+          <td><span class="rec-type" title="Section Data Record">SX</span></td>
+          <td class="td-name">${esc(r.course) || '—'}</td>
           <td>${esc(r.section) || '—'}</td>
           <td>${esc(r.crn) || '—'}</td>
           <td>${de}</td>
           <td>${links}</td>
-          <td>${esc(fmtDate(r.publishedAt))}</td>
+          <td class="td-course">${esc(fmtDate(r.publishedAt))}</td>
           <td class="sub-id">${esc(r.submissionId)}</td>
         </tr>`;
       }).join('');
 
       content.innerHTML = `
-        <div class="record-caption">
-          <strong>XB — Section Data Records</strong>
-          <span>${filtered.length} record${filtered.length === 1 ? '' : 's'}</span>
-          <span>Reportable element: XB12 (Instructional-Material-Cost)</span>
-        </div>
+        <div class="results-meta">${filtered.length} record${filtered.length === 1 ? '' : 's'} · reportable element XB12 (Instructional-Material-Cost)</div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -259,6 +237,63 @@
             <tbody>${body}</tbody>
           </table>
         </div>`;
+    }
+
+    /* ---- Fixed-format MIS data file (simulated XB Section Data Record) ---- */
+
+    function padField(value, len, mode) {
+      let s = value === null || value === undefined ? '' : String(value);
+      if (mode === 'rzero') {            // numeric, right-justified, zero-filled
+        s = s.replace(/[^0-9]/g, '');
+        s = s.length > len ? s.slice(-len) : s;
+        return s.padStart(len, '0');
+      }
+      // default: alpha, left-justified, space-filled, uppercased
+      s = s.toUpperCase();
+      s = s.length > len ? s.slice(0, len) : s;
+      return s.padEnd(len, ' ');
+    }
+
+    function misDetailRecord(r) {
+      return (
+        padField('XB', 2) +                        // 1-2   record type
+        padField('000', 3) +                       // 3-5   college code (placeholder)
+        padField('', 6) +                          // 6-11  term (not captured)
+        padField(r.crn, 5, 'rzero') +              // 12-16 CRN
+        padField(r.coursePrefix, 8) +              // 17-24 subject/prefix
+        padField(r.courseNumber, 8) +              // 25-32 course number
+        padField(r.section, 6) +                   // 33-38 section
+        padField(r.xb12Code, 1) +                  // 39    XB12 element
+        padField(r.submissionId, 41)               // 40-80 reference
+      );
+    }
+
+    function buildMisFile() {
+      const now = new Date();
+      const ymd = now.getFullYear().toString()
+        + String(now.getMonth() + 1).padStart(2, '0')
+        + String(now.getDate()).padStart(2, '0');
+      const lines = [];
+      // Header record: HDR + domain + generation date + record count
+      lines.push((padField('HDR', 3) + padField('XB', 2) + ymd + padField(String(RECORDS.length), 6, 'rzero')).padEnd(80, ' '));
+      RECORDS.forEach(r => lines.push(misDetailRecord(r)));
+      // Trailer record: TRL + record count
+      lines.push((padField('TRL', 3) + padField(String(RECORDS.length), 6, 'rzero')).padEnd(80, ' '));
+      return { text: lines.join('\n') + '\n', ymd };
+    }
+
+    function downloadMisFile() {
+      if (!RECORDS.length) return;
+      const { text, ymd } = buildMisFile();
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `MIS_XB_SectionDataRecords_${ymd}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     async function load() {
