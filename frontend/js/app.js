@@ -145,8 +145,14 @@
   // ---- Alerts -------------------------------------------------------------
   function showGlobalError(msg) {
     const el = $('global-alert');
+    el.className = 'alert alert-error';
     el.textContent = msg;
-    el.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function showGlobalSuccess(html) {
+    const el = $('global-alert');
+    el.className = 'alert alert-success';
+    el.innerHTML = html;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function clearGlobalError() {
@@ -291,29 +297,60 @@
     try {
       const res = await API.submitClass(currentCourse);
       const s = res.section || {};
-      const resultEl = $('submit-result');
-      resultEl.innerHTML = `
-        <h3>Class submitted — section XB12 code</h3>
-        <div>${xb12Badge(s.code, res.submission && res.submission.sectionCostStatus)} <strong>${esc(
-        s.code || ''
-      )}</strong> — ${esc(s.meaning || '')}</div>
-        <p class="explain">${esc(s.explanation || '')}</p>
-        <p class="small-note">${res.submission ? res.submission.materialCount : 0} material(s) recorded ·
-        ${(res.updatedResources || []).length} catalog entr${
-        (res.updatedResources || []).length === 1 ? 'y' : 'ies'
-      } updated with this section's usage.</p>`;
-      resultEl.classList.remove('hidden');
-      const msg = res.resubmitted
-        ? 'This section (CRN) already had a submission — it was updated. An administrator can review it.'
-        : 'Submission recorded. An administrator can now review it.';
-      setStatus('submit-status', 'success', msg);
-      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const verb = res.resubmitted ? 'updated' : 'submitted';
+      const courseLabel = `${currentCourse.coursePrefix} ${currentCourse.courseNumber}` +
+        (currentCourse.crn ? ` (CRN ${currentCourse.crn})` : '');
+      // Confirm the submission in a persistent banner, then reset the form so
+      // the next class can be entered from a clean slate.
+      showGlobalSuccess(
+        `${xb12Badge(s.code, res.submission && res.submission.sectionCostStatus)} ` +
+        `<strong>${esc(courseLabel)}</strong> ${verb} — section XB12 code ` +
+        `<strong>${esc(s.code || '')}</strong> (${esc(s.meaning || '')}). ` +
+        `The form has been reset for the next class.`
+      );
+      resetForm();
     } catch (e) {
       setStatus('submit-status', 'error', 'Could not submit the class: ' + esc(e.message));
-    } finally {
       btn.disabled = false;
       btn.innerHTML = original;
     }
+  }
+
+  // Clear the whole form after a submission so a new class can be entered.
+  function resetForm() {
+    currentCourse = null;
+    ['course-prefix', 'course-number', 'crn', 'section', 'year', 'prof-first', 'prof-last']
+      .forEach((id) => { if ($(id)) $(id).value = ''; });
+    if ($('quarter')) $('quarter').value = '';
+
+    // Search / filters
+    ['search-q', 'filter-class', 'filter-subject'].forEach((id) => { if ($(id)) $(id).value = ''; });
+    if ($('filter-xb12')) $('filter-xb12').value = '';
+    if ($('filter-type')) $('filter-type').value = '';
+    if ($('search-results')) $('search-results').innerHTML = '';
+    if ($('search-status')) $('search-status').textContent = 'Enter a search above to find existing resources.';
+
+    // Adopted materials + result panels
+    if ($('adopted-list')) $('adopted-list').innerHTML = '';
+    $('adopted-empty').classList.add('hidden');
+    $('adopted-course-label').textContent = 'No course loaded yet.';
+    hide('submit-result');
+    hide('submit-status');
+    resetNewForm();
+
+    // Reset the submit button
+    const submitBtn = $('btn-submit-class');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Submit class';
+    }
+
+    // Re-lock the downstream steps until a new course is loaded
+    $('step-adopted').classList.add('locked');
+    $('step-add').classList.add('locked');
+
+    const first = $('course-prefix');
+    if (first) first.focus();
   }
 
   // =========================================================================
