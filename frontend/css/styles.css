@@ -1323,5 +1323,20 @@ tbody td { padding: 11px 14px; vertical-align: middle; }
 .spinner.dark { border-color: rgba(127,24,46,0.3); border-top-color: var(--burg); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.btn-remove-material {
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: #b91c1c;
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.btn-remove-material:hover { background: #fef2f2; border-color: #fecaca; }
+.btn-remove-material:disabled { opacity: 0.6; cursor: default; }
+
 .small-note { font-size: 0.78rem; color: var(--muted); margin-top: 0.4rem; }
 .empty-hint { font-size: 0.86rem; color: var(--muted); padding: 0.75rem 0; }

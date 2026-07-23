@@ -138,6 +138,15 @@ async function listCourseResources(q) {
 }
 
 /**
+ * Remove a single adopted material from a course (by its adoption id).
+ * @param {string} id
+ * @returns {Promise<{success:boolean, deleted:string}>}
+ */
+async function deleteCourseResource(id) {
+  return _request('DELETE', `/course-resources/${encodeURIComponent(id)}`);
+}
+
+/**
  * Finalize a class submission: computes the section-level XB12 code, records
  * the submission, and writes usage back to the catalog.
  * @param {object} course { coursePrefix, courseNumber, crn, section, quarter, year, professorFirstName, professorLastName }
@@ -173,6 +182,7 @@ const API = {
   createResource,
   addCourseResource,
   listCourseResources,
+  deleteCourseResource,
   submitClass,
   listSubmissions,
   updateSubmission,

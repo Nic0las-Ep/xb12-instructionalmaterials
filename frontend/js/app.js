@@ -197,6 +197,8 @@
       const res = await API.listCourseResources({
         coursePrefix: currentCourse.coursePrefix,
         courseNumber: currentCourse.courseNumber,
+        crn: currentCourse.crn,
+        section: currentCourse.section,
         quarter: currentCourse.quarter,
         year: currentCourse.year,
       });
@@ -227,9 +229,29 @@
             <div class="ai-title">${esc(it.title || it.resourceId || 'Untitled resource')}</div>
             <div class="ai-meta">${esc(it.materialType || 'resource')}${ref ? ' · ' + ref : ''}</div>
           </div>
-          <div>${xb12Badge(it.xb12Code, it.costStatus)}</div>`;
+          <div class="rc-actions">
+            ${xb12Badge(it.xb12Code, it.costStatus)}
+            <button class="btn-remove-material" title="Remove this material" aria-label="Remove this material">Remove</button>
+          </div>`;
+        const btn = div.querySelector('.btn-remove-material');
+        if (btn) btn.addEventListener('click', () => removeMaterial(it, btn));
         listEl.appendChild(div);
       });
+  }
+
+  async function removeMaterial(item, btn) {
+    if (!item || !item.id) return;
+    if (!window.confirm(`Remove "${item.title || 'this material'}" from this course?`)) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner dark"></span>';
+    try {
+      await API.deleteCourseResource(item.id);
+      await refreshAdopted();
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Remove';
+      showGlobalError('Could not remove material: ' + e.message);
+    }
   }
 
   // =========================================================================

@@ -240,10 +240,12 @@ class Xb12Stack(Stack):
         search_res = resources_res.add_resource("search")
         search_res.add_method("GET", apigw.LambdaIntegration(search_fn))
 
-        # /course-resources (GET, POST)
+        # /course-resources (GET, POST)  and  /course-resources/{id} (DELETE)
         course_res = api.root.add_resource("course-resources")
         course_res.add_method("GET", apigw.LambdaIntegration(course_fn))
         course_res.add_method("POST", apigw.LambdaIntegration(course_fn))
+        course_item = course_res.add_resource("{id}")
+        course_item.add_method("DELETE", apigw.LambdaIntegration(course_fn))
 
         # /submit-class (POST) - finalize a class submission
         submit_res = api.root.add_resource("submit-class")

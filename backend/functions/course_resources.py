@@ -117,6 +117,15 @@ def _list(event):
     filter_expr = Attr("Course-prefix").eq(course_prefix) & Attr("Course-number").eq(
         course_number
     )
+    # Scope to a specific section: a CRN (or section) identifies a unique
+    # section, so when one is supplied only that section's materials are listed
+    # (materials from other sections of the same course are excluded).
+    crn = (params.get("crn") or params.get("CRN") or "").strip()
+    if crn:
+        filter_expr = filter_expr & Attr("CRN").eq(crn)
+    section = (params.get("section") or "").strip()
+    if section:
+        filter_expr = filter_expr & Attr("section").eq(section)
     quarter = (params.get("quarter") or "").strip()
     if quarter:
         filter_expr = filter_expr & Attr("Quarter").eq(quarter)
@@ -142,10 +151,24 @@ def _list(event):
     return ok({"count": len(items), "adoptions": items})
 
 
+def _delete(event):
+    """Remove a single adopted material (Textbookhistory row) by its id."""
+    adoption_id = (event.get("pathParameters") or {}).get("id")
+    if not adoption_id:
+        return bad_request("An adoption id is required.")
+    try:
+        _table.delete_item(Key={"id": adoption_id})
+    except Exception as exc:  # noqa: BLE001
+        return server_error("Failed to delete material.", detail=str(exc))
+    return ok({"success": True, "deleted": adoption_id})
+
+
 def handler(event, context):
     method = http_method(event)
     if method == "OPTIONS":
         return respond(200, {})
+    if method == "DELETE":
+        return _delete(event)
     if method == "GET":
         return _list(event)
     if method == "POST":
