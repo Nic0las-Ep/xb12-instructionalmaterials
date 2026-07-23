@@ -85,6 +85,19 @@
     return OER_MARKERS.some((m) => hay.includes(m));
   }
 
+  // Shorten a URL for display (drop protocol/trailing slash, cap length).
+  function shortenUrl(url, max) {
+    max = max || 48;
+    let s = String(url || '').replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    if (s.length > max) s = s.slice(0, max - 1) + '…';
+    return s;
+  }
+
+  // Render a URL as a shortened, clickable link (full URL in title + href).
+  function urlLink(url) {
+    return `<a class="ai-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(url)}">${esc(shortenUrl(url))}</a>`;
+  }
+
   function subjectFromCourse() {
     if (!currentCourse) return '';
     const prefix = (currentCourse.coursePrefix || '').toUpperCase();
@@ -225,13 +238,17 @@
     items
       .sort((a, b) => (b.adoptedAt || '').localeCompare(a.adoptedAt || ''))
       .forEach((it) => {
-        const ref = it.ISBN ? `ISBN ${esc(it.ISBN)}` : it.url ? esc(it.url) : '';
+        const refHtml = it.ISBN
+          ? `ISBN ${esc(it.ISBN)}`
+          : it.url
+          ? urlLink(it.url)
+          : '';
         const div = document.createElement('div');
         div.className = 'adopted-item';
         div.innerHTML = `
           <div class="rc-main">
             <div class="ai-title">${esc(it.title || it.resourceId || 'Untitled resource')}</div>
-            <div class="ai-meta">${esc(it.materialType || 'resource')}${ref ? ' · ' + ref : ''}</div>
+            <div class="ai-meta">${esc(it.materialType || 'resource')}${refHtml ? ' · ' + refHtml : ''}</div>
           </div>
           <div class="rc-actions">
             ${xb12Badge(it.xb12Code, it.costStatus)}
@@ -333,7 +350,7 @@
     if (r.author) meta.push(esc(r.author));
     if (r.publisher) meta.push(esc(r.publisher));
     if (r.ISBN) meta.push('ISBN ' + esc(r.ISBN));
-    if (r.url) meta.push(esc(r.url));
+    if (r.url) meta.push(urlLink(r.url));
     if (r.materialType) meta.push(esc(r.materialType));
 
     const card = document.createElement('div');

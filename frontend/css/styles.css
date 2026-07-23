@@ -1272,8 +1272,17 @@ tbody td { padding: 11px 14px; vertical-align: middle; }
   justify-content: space-between;
   gap: 1rem;
 }
+.adopted-item .rc-main { min-width: 0; }
 .adopted-item .ai-title { font-weight: 700; }
-.adopted-item .ai-meta { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+.adopted-item .ai-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ai-link { color: var(--burg); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.ai-link:hover { text-decoration: underline; }
 
 /* Missing / required field highlight */
 .field-missing input,
