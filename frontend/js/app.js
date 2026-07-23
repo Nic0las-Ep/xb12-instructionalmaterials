@@ -303,7 +303,10 @@
         (res.updatedResources || []).length === 1 ? 'y' : 'ies'
       } updated with this section's usage.</p>`;
       resultEl.classList.remove('hidden');
-      setStatus('submit-status', 'success', 'Submission recorded. An administrator can now review it.');
+      const msg = res.resubmitted
+        ? 'This section (CRN) already had a submission — it was updated. An administrator can review it.'
+        : 'Submission recorded. An administrator can now review it.';
+      setStatus('submit-status', 'success', msg);
       resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (e) {
       setStatus('submit-status', 'error', 'Could not submit the class: ' + esc(e.message));

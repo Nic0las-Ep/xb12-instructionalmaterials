@@ -199,6 +199,37 @@ def _reindex_resource(client, resource):
         pass
 
 
+def _find_existing_submission(prefix, number, crn, section, quarter, year):
+    """
+    A CRN uniquely identifies a section, so a resubmission for the same CRN
+    should update the existing submission rather than create a duplicate.
+    Returns the most recent matching submission, or None. Requires a CRN (or,
+    absent a CRN, a section) to identify the section - otherwise returns None
+    so we don't accidentally merge distinct sections.
+    """
+    expr = Attr("coursePrefix").eq(prefix) & Attr("courseNumber").eq(number)
+    if crn:
+        expr = expr & Attr("crn").eq(crn)
+    elif section:
+        expr = expr & Attr("section").eq(section)
+    else:
+        return None
+    if quarter:
+        expr = expr & Attr("quarter").eq(quarter)
+    if str(year).strip() not in ("", "None"):
+        expr = expr & Attr("year").eq(int(year) if str(year).isdigit() else year)
+
+    items, kwargs = [], {"FilterExpression": expr}
+    while True:
+        resp = _submissions.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        if "LastEvaluatedKey" not in resp:
+            break
+        kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+    items.sort(key=lambda s: s.get("submittedAt", ""), reverse=True)
+    return items[0] if items else None
+
+
 def handler(event, context):
     if http_method(event) == "OPTIONS":
         return respond(200, {})
@@ -267,8 +298,16 @@ def handler(event, context):
 
     respondent = (first + " " + last).strip() or "Unknown"
     now = datetime.datetime.utcnow().isoformat() + "Z"
+
+    # If this section (by CRN) was already submitted, update that record in
+    # place instead of creating a duplicate. A genuinely new/unique CRN creates
+    # a new submission. The admin's notes are preserved; status resets to
+    # Pending since the materials may have changed and need re-review.
+    existing = _find_existing_submission(prefix, number, crn, section, quarter, year)
+    resubmitted = bool(existing)
+
     submission = {
-        "id": str(uuid.uuid4()),
+        "id": existing["id"] if existing else str(uuid.uuid4()),
         "respondentName": respondent,
         "professorFirstName": first,
         "professorLastName": last,
@@ -287,7 +326,8 @@ def handler(event, context):
         "sectionCostStatus": ("ZTC-OER" if code == "E" else (ztc_ltc or ("NONE" if code == "A" else "STANDARD"))),
         "materialType": material_type_label,
         "status": "Pending",
-        "adminNotes": "",
+        "adminNotes": (existing.get("adminNotes") if existing else "") or "",
+        "createdAt": (existing.get("createdAt") or existing.get("submittedAt")) if existing else now,
         "submittedAt": now,
     }
 
@@ -299,6 +339,7 @@ def handler(event, context):
     return ok(
         {
             "success": True,
+            "resubmitted": resubmitted,
             "submission": submission,
             "section": {
                 "code": code,
