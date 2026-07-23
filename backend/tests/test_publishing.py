@@ -205,6 +205,58 @@ class MaterialSnapshotTests(unittest.TestCase):
         self.assertEqual(snap[0]["url"], "https://platform.edu/x")
 
 
+class FakeHistoryTable:
+    """DynamoDB Table stand-in that returns preset adoption rows on scan."""
+
+    def __init__(self, items):
+        self._items = items
+
+    def scan(self, **kwargs):
+        return {"Items": list(self._items)}
+
+
+class PriceEnrichmentTests(unittest.TestCase):
+    def test_fills_missing_price_by_isbn_and_url(self):
+        sub = _submission(
+            [
+                {"title": "Text", "ISBN": "9781266233463"},
+                {"title": "Platform", "url": "https://platform.edu/course"},
+            ]
+        )
+        snap = ps.build_material_snapshot(sub)
+        self.assertNotIn("price", snap[0])  # no price before enrichment
+        history = FakeHistoryTable([
+            {"ISBN": "9781266233463", "price": 40},
+            {"url": "https://platform.edu/course", "price": 180},
+        ])
+        ps.enrich_snapshot_prices(snap, sub, history)
+        book = next(m for m in snap if m["isbn"] == "9781266233463")
+        platform = next(m for m in snap if m["url"] == "https://platform.edu/course")
+        self.assertEqual(book["price"], 40)
+        self.assertEqual(platform["price"], 180)
+
+    def test_does_not_override_existing_price(self):
+        sub = _submission([{"title": "Text", "ISBN": "111", "price": 99}])
+        snap = ps.build_material_snapshot(sub)
+        history = FakeHistoryTable([{"ISBN": "111", "price": 5}])
+        ps.enrich_snapshot_prices(snap, sub, history)
+        self.assertEqual(snap[0]["price"], 99)
+
+    def test_no_history_table_is_noop(self):
+        sub = _submission([{"title": "Text", "ISBN": "111"}])
+        snap = ps.build_material_snapshot(sub)
+        ps.enrich_snapshot_prices(snap, sub, None)
+        self.assertNotIn("price", snap[0])
+
+    def test_publish_enriches_price(self):
+        sub = _submission([{"title": "Text", "ISBN": "9781266233463"}])
+        table = FakeTable()
+        history = FakeHistoryTable([{"ISBN": "9781266233463", "price": 40}])
+        ps.publish(sub, ["bookstore"], "admin", table, history_table=history)
+        row = table.items["sub-1#bookstore"]
+        self.assertEqual(row["materials"][0]["price"], 40)
+
+
 class PublishTests(unittest.TestCase):
     def test_publish_one_row_per_destination(self):
         sub = _submission([{"url": "https://example.edu/a"}])

@@ -193,8 +193,11 @@ one publication, so no grouping is needed.
 All three mock pages use the app's shared design system (`css/styles.css`, De
 Anza burgundy/gold branding) so they match the survey and admin pages.
 
-> Price is captured on submission going forward; submissions created before this
-> was added show no price until they are re-submitted through the form.
+> Material price is captured on the submission snapshot. When a snapshot
+> predates price capture, the publish step **enriches** each material's price
+> from the course's live adoption records (Textbookhistory) — matching by ISBN
+> first, then by normalized URL — so the Bookstore price populates without
+> re-finalizing. A price of `0` (e.g. OER) is shown as **Free**.
 
 ---
 

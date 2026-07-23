@@ -31,6 +31,7 @@ import os
 import uuid
 
 import boto3
+from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import ClientError
 
 from xb12_common import urls as urlutil
@@ -45,6 +46,9 @@ from xb12_common.responses import (
 
 SUBMISSIONS_TABLE = os.environ["SUBMISSIONS_TABLE"]
 PUBLISHED_LINKS_TABLE = os.environ["PUBLISHED_LINKS_TABLE"]
+# Adoption history table (Textbookhistory-index) - used to enrich material
+# prices at publish time when the submission snapshot predates price capture.
+HISTORY_TABLE = os.environ.get("HISTORY_TABLE")
 
 # Canonical destination ids and their human labels.
 DESTINATIONS = {
@@ -58,6 +62,7 @@ APPROVED_STATUS = "Approved"
 _ddb = boto3.resource("dynamodb")
 _submissions = _ddb.Table(SUBMISSIONS_TABLE)
 _published = _ddb.Table(PUBLISHED_LINKS_TABLE)
+_history = _ddb.Table(HISTORY_TABLE) if HISTORY_TABLE else None
 
 
 def _submission_id(event):
@@ -195,7 +200,72 @@ def build_material_snapshot(submission):
     return snapshot
 
 
-def publish(submission, destinations, published_by, table, now=None):
+def _adoption_price_index(submission, history_table):
+    """
+    Build {isbn -> price} and {normalizedUrl -> price} lookups from the course's
+    adoption records (Textbookhistory) so material prices can be filled in even
+    when the submission snapshot predates price capture.
+    """
+    prefix = submission.get("coursePrefix") or submission.get("department") or ""
+    number = submission.get("courseNumber") or ""
+    crn = submission.get("crn") or submission.get("CRN") or ""
+    if not prefix or not number:
+        return {}, {}
+
+    expr = Attr("Course-prefix").eq(prefix) & Attr("Course-number").eq(number)
+    if crn:
+        expr = expr & Attr("CRN").eq(crn)
+
+    items, kwargs = [], {"FilterExpression": expr}
+    while True:
+        resp = history_table.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        if "LastEvaluatedKey" not in resp:
+            break
+        kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+
+    by_isbn, by_url = {}, {}
+    for adoption in items:
+        price = adoption.get("price")
+        if price in (None, ""):
+            continue
+        isbn = str(adoption.get("ISBN") or "").strip()
+        if isbn and isbn not in by_isbn:
+            by_isbn[isbn] = price
+        normalized = urlutil.normalize_url(adoption.get("url") or "")
+        if normalized and normalized not in by_url:
+            by_url[normalized] = price
+    return by_isbn, by_url
+
+
+def enrich_snapshot_prices(snapshot, submission, history_table):
+    """
+    Fill in missing material prices from the course's adoption records. Matches
+    each material by ISBN first, then by normalized URL. No-op when a price is
+    already present or no history table is available. Best-effort.
+    """
+    if not history_table:
+        return snapshot
+    try:
+        by_isbn, by_url = _adoption_price_index(submission, history_table)
+    except Exception:  # noqa: BLE001 - enrichment is best-effort
+        return snapshot
+    if not by_isbn and not by_url:
+        return snapshot
+    for material in snapshot:
+        if material.get("price") not in (None, ""):
+            continue
+        price = None
+        if material.get("isbn") and material["isbn"] in by_isbn:
+            price = by_isbn[material["isbn"]]
+        elif material.get("url") and material["url"] in by_url:
+            price = by_url[material["url"]]
+        if price is not None:
+            material["price"] = price
+    return snapshot
+
+
+def publish(submission, destinations, published_by, table, now=None, history_table=None):
     """
     Write ONE idempotent row per (submission, destination) for an approved
     submission and return ``(result_dict, error_message)``.
@@ -210,6 +280,7 @@ def publish(submission, destinations, published_by, table, now=None):
     (counts as a skipped duplicate) so re-publishing never creates duplicates.
     """
     materials = build_material_snapshot(submission)
+    materials = enrich_snapshot_prices(materials, submission, history_table)
     url_pairs = extract_publishable_urls(submission)
     urls = [pair["normalizedUrl"] for pair in url_pairs]
     if not materials and not urls:
@@ -308,7 +379,9 @@ def handler(event, context):
 
     published_by = _resolve_publisher(event)
 
-    result, error = publish(submission, destinations, published_by, _published)
+    result, error = publish(
+        submission, destinations, published_by, _published, history_table=_history
+    )
     if error:
         # A storage failure is a server condition; anything else (e.g. nothing
         # to publish) is a client condition.
