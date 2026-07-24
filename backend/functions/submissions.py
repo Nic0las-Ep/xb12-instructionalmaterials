@@ -13,6 +13,7 @@ submissions, so an admin auth layer should be added before production use.
 
 import datetime
 import os
+from decimal import Decimal
 
 import boto3
 
@@ -24,12 +25,33 @@ from xb12_common.responses import (
     parse_body,
     http_method,
 )
+from xb12_common.xb12 import XB12_MEANINGS, zero_low_cost_marking
 
 SUBMISSIONS_TABLE = os.environ["SUBMISSIONS_TABLE"]
 
 _table = boto3.resource("dynamodb").Table(SUBMISSIONS_TABLE)
 
 _ALLOWED_STATUS = {"Pending", "Under Review", "Approved", "Needs Correction"}
+
+# Simple identity/professor fields an admin may correct. The class, section
+# number, and CRN are intentionally NOT editable - they identify the section.
+_EDITABLE_STR_FIELDS = ("respondentName", "professorFirstName", "professorLastName")
+
+
+def _decimalize(obj):
+    """Recursively convert floats to Decimal so the value is DynamoDB-safe."""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    if isinstance(obj, list):
+        return [_decimalize(v) for v in obj]
+    if isinstance(obj, dict):
+        return {k: _decimalize(v) for k, v in obj.items()}
+    return obj
+
+# Fields an admin may correct on a submission (e.g. a last-minute professor or
+# section change). CRN is intentionally excluded: it is the immutable section
+# identifier used to match submissions and adoptions, so it cannot be changed.
+EDITABLE_FIELDS = ("respondentName", "professorFirstName", "professorLastName", "section")
 
 
 def _submission_id(event):
@@ -78,6 +100,36 @@ def _update(event, sub_id):
         expr_parts.append("adminNotes = :n")
         values[":n"] = str(notes)
 
+    names = {}
+
+    # --- Editable corrections -------------------------------------------
+    # The professor can change last-minute, and the resources and XB12 codes
+    # can change. The class, section number, and CRN stay fixed (not editable).
+    for i, field in enumerate(_EDITABLE_STR_FIELDS):
+        if body.get(field) is not None:
+            alias = f":f{i}"
+            expr_parts.append(f"{field} = {alias}")
+            values[alias] = str(body[field])
+
+    code = body.get("sectionXb12Code")
+    if code is not None:
+        code = str(code).strip().upper()
+        if code and code not in XB12_MEANINGS:
+            return bad_request(f"Invalid XB12 code. Allowed: {sorted(XB12_MEANINGS)}")
+        expr_parts.append("sectionXb12Code = :xc")
+        values[":xc"] = code
+        expr_parts.append("sectionXb12Meaning = :xm")
+        values[":xm"] = XB12_MEANINGS.get(code, "")
+        expr_parts.append("sectionCostStatus = :xs")
+        values[":xs"] = zero_low_cost_marking(code) or ("NONE" if code == "A" else "STANDARD")
+
+    materials = body.get("materials")
+    if materials is not None:
+        if not isinstance(materials, list):
+            return bad_request("materials must be a list.")
+        expr_parts.append("materials = :m")
+        values[":m"] = _decimalize(materials)
+
     kwargs = {
         "Key": {"id": sub_id},
         "UpdateExpression": "SET " + ", ".join(expr_parts),
@@ -85,7 +137,9 @@ def _update(event, sub_id):
         "ReturnValues": "ALL_NEW",
     }
     if status is not None:
-        kwargs["ExpressionAttributeNames"] = {"#s": "status"}
+        names["#s"] = "status"
+    if names:
+        kwargs["ExpressionAttributeNames"] = names
 
     try:
         result = _table.update_item(**kwargs)

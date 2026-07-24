@@ -419,13 +419,46 @@ def publish(submission, destinations, published_by, table, now=None,
     return result, None
 
 
+def unpublish(submission_id, table):
+    """
+    Remove every published record for a submission across all destinations.
+    Used when an approved submission is unapproved or corrected so the
+    downstream mock systems no longer show stale data. Returns
+    ``(removed_count, destinations)``.
+    """
+    items, kwargs = [], {"FilterExpression": Attr("submissionId").eq(submission_id)}
+    while True:
+        resp = table.scan(**kwargs)
+        items.extend(resp.get("Items", []))
+        if "LastEvaluatedKey" not in resp:
+            break
+        kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+
+    removed, destinations = 0, set()
+    for item in items:
+        table.delete_item(Key={"id": item["id"]})
+        removed += 1
+        if item.get("destination"):
+            destinations.add(item["destination"])
+    return removed, sorted(destinations)
+
+
 def handler(event, context):
-    if http_method(event) == "OPTIONS":
+    method = http_method(event)
+    if method == "OPTIONS":
         return respond(200, {})
 
     sub_id = _submission_id(event)
     if not sub_id:
         return bad_request("A submission id is required.")
+
+    # Unpublish: remove this submission's links from all destinations.
+    if method == "DELETE":
+        try:
+            removed, dests = unpublish(sub_id, _published)
+        except Exception as exc:  # noqa: BLE001
+            return server_error("Failed to unpublish submission.", detail=str(exc))
+        return ok({"success": True, "removedCount": removed, "destinations": dests})
 
     body = parse_body(event)
     destinations, dest_error = validate_destinations(body.get("destinations"))

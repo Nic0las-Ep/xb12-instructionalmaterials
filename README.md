@@ -104,6 +104,11 @@ submission is not `Approved` ("Approve this submission before publishing."),
 when no valid destination is selected, or when the submission has no materials
 to publish. Unknown submission → 404.
 
+### `DELETE /admin/submissions/{submissionId}/publish`
+
+Unpublishes the submission — removes every published record for it across all
+destinations. Response: `{ success, removedCount, destinations: [...] }`.
+
 ### `GET /published-links?destination=course-schedule`
 
 `destination` must be one of `course-schedule`, `bookstore`, `mis-reporting`.
@@ -257,6 +262,24 @@ controls:
   actually published — so it updates if links are later removed. It is separate
   from the review status, so it does not affect the Approved-required publish
   gate.
+
+### Editing & unapproving (keeping destinations in sync)
+
+Admins can correct a submission and the destination systems stay consistent:
+
+- The modal has an **Edit Submission** panel to change the **professor**, the
+  **resources/materials** (title, ISBN, URL, price, type, cost status, and
+  per-material XB12 code), and the **section XB12 code**. The class, section
+  number, and CRN are fixed and cannot be edited. `PUT /submissions/{id}`
+  accepts these fields; changing the XB12 code also refreshes its meaning/cost
+  status.
+- On **Save**, the destinations are re-synced automatically: if the submission
+  is still **Approved** and was published, it is re-published (pushing the
+  edits); if it is no longer Approved, its links are **unpublished** (removed).
+- `DELETE /admin/submissions/{submissionId}/publish` removes a submission's
+  links from every destination. A manual **Unpublish** button in the modal
+  calls it. This is how a last-minute professor swap or material change is
+  corrected end to end.
 
 Authorization is re-validated in the backend; the disabled button is only a
 convenience. The route is namespaced under `/admin/...` so a Cognito (or other)

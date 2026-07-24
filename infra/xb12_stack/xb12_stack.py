@@ -298,6 +298,8 @@ class Xb12Stack(Stack):
         admin_submission_item = admin_submissions_res.add_resource("{submissionId}")
         publish_res = admin_submission_item.add_resource("publish")
         publish_res.add_method("POST", apigw.LambdaIntegration(publish_fn))
+        # DELETE unpublishes (removes the submission's links from destinations).
+        publish_res.add_method("DELETE", apigw.LambdaIntegration(publish_fn))
 
         # /published-links (GET) - read links for a mock destination
         published_res = api.root.add_resource("published-links")
